@@ -20,10 +20,10 @@ Tensor stack research can be challenging in that large-scale research frameworks
 
 ## Implementing or Adding a Tensor Backend
 At a high level, implementing an `fl::Tensor` backend is simple and requires subclassing two interfaces:
-1. [`TensorAdapterBase`](https://github.com/flashlight/flashlight/blob/master/flashlight/fl/tensor/TensorAdapter.h), which defines operations for member functions on an `fl::Tensor`.
-2. [`TensorBackend`](https://github.com/flashlight/flashlight/blob/master/flashlight/fl/tensor/TensorBackend.h) which defines global tensor operations.
+1. [`TensorAdapterBase`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/TensorAdapter.h), which defines operations for member functions on an `fl::Tensor`.
+2. [`TensorBackend`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/TensorBackend.h) which defines global tensor operations.
 
-Tensor backend implementations should be placed in `tensor/backend/[backend name]`; for example, the ArrayFire backend implementation resides in `tensor/backend/af`. [`ArrayFireTensor.h`](flashlight/fl/tensor/backend/af/ArrayFireTensor.h) and [`ArrayFireBackend.h`](flashlight/fl/tensor/backend/af/ArrayFireBackend.h) provide good starting point examples of implementations.
+Tensor backend implementations should be placed in `tensor/backend/[backend name]`; for example, the ArrayFire backend implementation resides in `tensor/backend/af`. [`ArrayFireTensor.h`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/backend/af/ArrayFireTensor.h) and [`ArrayFireBackend.h`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/backend/af/ArrayFireBackend.h) provide good starting point examples of implementations.
 
 ### Example with an Implementation Stub
 In this example, we'll integrate a new `FooBaz` backend.
@@ -68,7 +68,7 @@ target_compile_definitions(
 # ...
 ```
 
-Now, we'll add `FooBazTensor.h`, also in `flashlight/fl/tensor/backend/foobaz` which defines the class `FooBazTensor`, derived from [`TensorAdapterBase`](./TensorAdapterBase.h), as follows:
+Now, we'll add `FooBazTensor.h`, also in `flashlight/fl/tensor/backend/foobaz` which defines the class `FooBazTensor`, derived from [`TensorAdapterBase`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/TensorAdapter.h), as follows:
 ```cpp
 #include "flashlight/fl/tensor/TensorAdapter.h"
 #include "flashlight/fl/tensor/Shape.h"
@@ -95,7 +95,7 @@ class FooBazTensor : public fl::TensorAdapterBase {
   // ...
 };
 ```
-We write our implementations in `FooBazTensor.cpp` accordingly (omitted here). If our `FooBazTensor` doesn't support some operations, we can have them throw exceptions, or alternatively include, depend on, and delegate to implementations in another existing `fl::Tensor` backend. See the [tensor adapter interface documentation](./TensorAdapter.h) for function-level expected behavior.
+We write our implementations in `FooBazTensor.cpp` accordingly (omitted here). If our `FooBazTensor` doesn't support some operations, we can have them throw exceptions, or alternatively include, depend on, and delegate to implementations in another existing `fl::Tensor` backend. See the [tensor adapter interface documentation](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/TensorAdapter.h) for function-level expected behavior.
 
 Now, we'll create our backend implementation, `FooBazBackend.h`, also in `flashlight/fl/tensor/backend/foobaz`, where we'll define most tensor operations and can store global state related to our backend:
 ```cpp
@@ -116,7 +116,7 @@ class FooBazBackend : public fl::TensorBackend {
   // ...
 };
 ```
-Implementations of this interface are in `FooBazBackend.cpp` (or distributed across other compilation units), and are ommitted here. As with `FooBazTensor`, if our backend doesn't support some operations, we can have those operations throw exceptions, or alternatively delegate to another existing backend. See the [backend interface documentation](./TensorBackend.h) for function-level expected behavior.
+Implementations of this interface are in `FooBazBackend.cpp` (or distributed across other compilation units), and are ommitted here. As with `FooBazTensor`, if our backend doesn't support some operations, we can have those operations throw exceptions, or alternatively delegate to another existing backend. See the [backend interface documentation](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/TensorBackend.h) for function-level expected behavior.
 
 ### Testing an Implementation Against Requirements
 We can test an `fl::Tensor` implementation against requirements for expected behavior by running test in `flashlight/fl/test/tensor`. These include:
@@ -146,7 +146,7 @@ Backends implemented with `fl::Tensor` can have both lazy and eager evaluation s
 There are no additional implementation requirements around memory usage besides the constructor, `host` and `device` functions above. Only tensors on which these memory-access functions are called need to have explicit buffers.
 
 ### Changing Default Behavior
-To adjust the default backend with which Flashlight tensors are created, change the types and preprocessor calues in [`TensorAdapter.cpp`](https://github.com/flashlight/flashlight/blob/master/flashlight/fl/tensor/TensorAdapter.cpp) accordingly.
+To adjust the default backend with which Flashlight tensors are created, change the types and preprocessor calues in [`TensorAdapter.cpp`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/tensor/TensorAdapter.cpp) accordingly.
 - **Note:** Flashlight's default tensor backend continues to be [ArrayFire](https://github.com/arrayfire/arrayfire), and newly-created tensors will be `fl::Tensor` will call into ArrayFire by default.
 
 ## Tensor Interface Extensions
@@ -168,7 +168,7 @@ FL_REGISTER_TENSOR_EXTENSION(
 
 ### A Tensor Extension for Autograd Operations: `AutogradExtension`
 
-[Flashlight's `AutogradExtension`](flashlight/fl/autograd/tensor/AutogradExtension.h) provides an API for implementing operations that frequently have autograd-aware implementations. These include:
+[Flashlight's `AutogradExtension`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/autograd/tensor/AutogradExtension.h) provides an API for implementing operations that frequently have autograd-aware implementations. These include:
 - Convolution (`conv2d`)
 - Pooling (`pool2d`)
 - Batch normalization (`batchnorm`)
@@ -176,4 +176,4 @@ FL_REGISTER_TENSOR_EXTENSION(
 
 Each of the above interface functions have one or more corresponding backward functions (e.g. `pool2dBackward`) with which to compute gradients with respect to their forward parameters.
 
-For documentation on the behavior and input parameters of functions on `AutogradExtension`, see the [documentation for `AutogradOps.h`](flashlight/fl/autograd/tensor/AutogradOps.h), which dispatches to the registered `AutogradExtention` implemetations for those operations' input tensors' backends.
+For documentation on the behavior and input parameters of functions on `AutogradExtension`, see the [documentation for `AutogradOps.h`](https://github.com/flashlight/flashlight/blob/main/flashlight/fl/autograd/tensor/AutogradOps.h), which dispatches to the registered `AutogradExtention` implemetations for those operations' input tensors' backends.

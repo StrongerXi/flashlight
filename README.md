@@ -26,7 +26,7 @@ from the Facebook AI Research and the creators of Torch, TensorFlow, Eigen and
 Deep Speech. Its core features include:
 - **Modifiability to the core** including [internal APIs for tensor computation](flashlight/fl/tensor/README.md).
 - **A small footprint**, with the core clocking in at under 10 MB and 20k lines of C++.
-- **High-performance defaults** featuring fust-in-time kernel compilation with modern C++ via the [*ArrayFire*](https://github.com/arrayfire/arrayfire)
+- **High-performance defaults** featuring just-in-time kernel compilation with modern C++ via the [*ArrayFire*](https://github.com/arrayfire/arrayfire)
 tensor library.
 - An emphasis on efficiency and scale.
 
