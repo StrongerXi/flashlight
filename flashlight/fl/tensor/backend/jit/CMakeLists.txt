@@ -3,3 +3,10 @@ cmake_minimum_required(VERSION 3.10)
 # ----------------------------- Sources -----------------------------
 
 include(${CMAKE_CURRENT_LIST_DIR}/ir/CMakeLists.txt) # ir
+
+target_sources(
+  flashlight
+  PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/JitBackend.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/JitTensorBase.cpp
+)
