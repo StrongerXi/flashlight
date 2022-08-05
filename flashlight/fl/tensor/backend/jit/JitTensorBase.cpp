@@ -173,6 +173,7 @@ std::shared_ptr<Node> JitTensorBase::node() {
 
 void JitTensorBase::eval() {
   if (!node_->getResult().has_value()) {
+    replaceNode(optimizer().optimize(node_));
     // TODO consider updating `node_` to a value node here, to help free up the
     // graph nodes. It's not worth it now because we'd have to copy tensor here.
     evaluator().execute(node_);
