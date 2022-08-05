@@ -7,12 +7,14 @@
 
 #include "flashlight/fl/tensor/backend/jit/opt/backends/onednn/OneDnnJitOptimizerExtension.h"
 
+#include "flashlight/fl/tensor/backend/jit/opt/backends/onednn/BinaryOpFuser.h"
 #include "flashlight/fl/tensor/backend/onednn/OneDnnBackend.h"
 
 namespace fl {
 
 std::shared_ptr<Node> OneDnnJitOptimizerExtension::optimize(
     std::shared_ptr<Node> node) {
+  node = BinaryOpFuser::apply(node);
   return node;
 }
 

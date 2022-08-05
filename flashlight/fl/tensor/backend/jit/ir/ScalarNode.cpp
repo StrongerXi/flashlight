@@ -26,7 +26,7 @@ dtype ScalarNode::dataType() const {
 
 std::shared_ptr<Node> ScalarNode::mapInputs(
     std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)>&& /* func */) {
-  return shared_from_this();
+  return std::make_shared<ScalarNode>(PrivateHelper{}, shape_, dtype_, scalar_);
 }
 
 } // namespace fl
