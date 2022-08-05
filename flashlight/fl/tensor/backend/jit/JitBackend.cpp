@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "flashlight/fl/tensor/TensorBase.h"
+#include "flashlight/fl/tensor/backend/jit/ScalarNode.h"
 
 #define FL_JIT_BACKEND_UNIMPLEMENTED \
   throw std::invalid_argument(        \
@@ -86,10 +87,32 @@ Tensor JitBackend::rand(const Shape& /* shape */, dtype /* type */) {
         "JitBackend::fromScalar - not implemented for type " +                \
         std::string(#TYPE));                                                  \
   }                                                                           \
-  Tensor JitBackend::full(                                                    \
-      const Shape& /* shape */, TYPE /* value */, const dtype /* type */) {   \
-    throw std::invalid_argument(                                              \
-        "JitBackend::full - not implemented for type " + std::string(#TYPE)); \
+  Tensor JitBackend::full(const Shape& shape, TYPE value, const dtype type) { \
+    switch (type) {                                                           \
+      case dtype::f16:                                                        \
+        return fullWithType<float>(shape, value, dtype::f32)                  \
+            .astype(dtype::f16);                                              \
+      case dtype::f32:                                                        \
+        return fullWithType<float>(shape, value, type);                       \
+      case dtype::f64:                                                        \
+        return fullWithType<double>(shape, value, type);                      \
+      case dtype::b8:                                                         \
+        return fullWithType<char>(shape, value, type);                        \
+      case dtype::s16:                                                        \
+        return fullWithType<short>(shape, value, type);                       \
+      case dtype::s32:                                                        \
+        return fullWithType<int>(shape, value, type);                         \
+      case dtype::s64:                                                        \
+        return fullWithType<long long>(shape, value, type);                   \
+      case dtype::u8:                                                         \
+        return fullWithType<unsigned char>(shape, value, type);               \
+      case dtype::u16:                                                        \
+        return fullWithType<unsigned short>(shape, value, type);              \
+      case dtype::u32:                                                        \
+        return fullWithType<unsigned int>(shape, value, type);                \
+      case dtype::u64:                                                        \
+        return fullWithType<unsigned long long>(shape, value, type);          \
+    }                                                                         \
   }
 FL_JIT_BACKEND_CREATE_FUN_LITERAL_DEF_STUB(const double&);
 FL_JIT_BACKEND_CREATE_FUN_LITERAL_DEF_STUB(const float&);
@@ -104,6 +127,13 @@ FL_JIT_BACKEND_CREATE_FUN_LITERAL_DEF_STUB(const unsigned long long&);
 FL_JIT_BACKEND_CREATE_FUN_LITERAL_DEF_STUB(const bool&);
 FL_JIT_BACKEND_CREATE_FUN_LITERAL_DEF_STUB(const short&);
 FL_JIT_BACKEND_CREATE_FUN_LITERAL_DEF_STUB(const unsigned short&);
+
+template<typename T>
+Tensor JitBackend::fullWithType(const Shape& shape, T value, dtype type) {
+  double data;
+  reinterpret_cast<T&>(data) = value; // TODO bruh
+  return jitTensorCreator_(ScalarNode::create(shape, type, data));
+}
 
 Tensor JitBackend::identity(const Dim /* dim */, const dtype /* type */) {
   FL_JIT_BACKEND_UNIMPLEMENTED;
