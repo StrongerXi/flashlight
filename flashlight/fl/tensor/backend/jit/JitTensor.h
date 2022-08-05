@@ -30,6 +30,11 @@ class JitTensor : public JitTensorBase {
     return wrappedBackend;
   }
 
+  Evaluator& evaluator() const override {
+    static Evaluator evaluator(wrappedBackend());
+    return evaluator;
+  }
+
  public:
   // 1 static instance per jitted T.
   JitBackend& backend() const override {

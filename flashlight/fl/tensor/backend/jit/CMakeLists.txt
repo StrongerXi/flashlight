@@ -9,4 +9,5 @@ target_sources(
   PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/JitBackend.cpp
   ${CMAKE_CURRENT_LIST_DIR}/JitTensorBase.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/Evaluator.cpp
 )

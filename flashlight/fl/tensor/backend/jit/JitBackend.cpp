@@ -10,9 +10,9 @@
 #include <stdexcept>
 
 #include "flashlight/fl/tensor/TensorBase.h"
-#include "flashlight/fl/tensor/backend/jit/BinaryNode.h"
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
-#include "flashlight/fl/tensor/backend/jit/ScalarNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 
 #define FL_JIT_BACKEND_UNIMPLEMENTED \
   throw std::invalid_argument(        \
@@ -33,10 +33,8 @@ TensorBackendType JitBackend::backendType() const {
 
 /* -------------------------- Compute Functions -------------------------- */
 
-void JitBackend::eval(const Tensor& /* tensor */) {
-  // Launch computation for a given tensor. Can be a noop for non-async
-  // runtimes.
-  FL_JIT_BACKEND_UNIMPLEMENTED;
+void JitBackend::eval(const Tensor& tensor) {
+  toJitTensorBase(tensor).eval();
 }
 
 bool JitBackend::supportsDataType(const fl::dtype& /* dtype */) const {

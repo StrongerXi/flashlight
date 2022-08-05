@@ -8,6 +8,7 @@
 #pragma once
 
 #include "flashlight/fl/tensor/TensorAdapter.h"
+#include "flashlight/fl/tensor/backend/jit/Evaluator.h"
 #include "flashlight/fl/tensor/backend/jit/JitBackend.h"
 #include "flashlight/fl/tensor/backend/jit/ir/Node.h"
 
@@ -20,6 +21,9 @@ namespace fl {
 class JitTensorBase : public TensorAdapterBase {
   std::shared_ptr<Node> node_;
 
+  // return the wrapped tensor, not a JitTensorBase
+  const Tensor& getTensorOrEvalNode();
+
  protected:
   // this allows us to create an instance of derived class
   virtual
@@ -28,6 +32,9 @@ class JitTensorBase : public TensorAdapterBase {
 
   // TODO
   virtual TensorBackend& wrappedBackend() const = 0;
+
+  // Allow JitTensor<T> to potentially inject things into Evaluator
+  virtual Evaluator& evaluator() const = 0;
 
   JitTensorBase(std::shared_ptr<Node> node);
 
@@ -60,6 +67,9 @@ class JitTensorBase : public TensorAdapterBase {
 
   // TODO
   std::shared_ptr<Node> node();
+
+  // TODO
+  void eval();
 
   /******************** Assignment Operators ********************/
 #define ASSIGN_OP_TYPE_STUB(OP, TYPE) void OP(const TYPE& val) override;
