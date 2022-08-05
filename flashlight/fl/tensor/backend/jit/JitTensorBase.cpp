@@ -32,6 +32,11 @@ void JitTensorBase::replaceNode(std::shared_ptr<Node> newNode) {
   }
 }
 
+const Tensor& JitTensorBase::getTensorOrEvalNode() {
+  eval();
+  return node_->getResult().value();
+}
+
 Tensor JitTensorBase::copy() {
   FL_JIT_TENSOR_UNIMPLEMENTED;
 }
@@ -123,7 +128,7 @@ void* JitTensorBase::getContext() {
 }
 
 std::string JitTensorBase::toString() {
-  FL_JIT_TENSOR_UNIMPLEMENTED;
+  return getTensorOrEvalNode().toString();
 }
 
 std::ostream& JitTensorBase::operator<<(std::ostream& /* ostr */) {
@@ -164,6 +169,14 @@ FL_JIT_TENSOR_ASSIGN_OP_STUB(inPlaceDivide); // /=
 
 std::shared_ptr<Node> JitTensorBase::node() {
   return node_;
+}
+
+void JitTensorBase::eval() {
+  if (!node_->getResult().has_value()) {
+    // TODO consider updating `node_` to a value node here, to help free up the
+    // graph nodes. It's not worth it now because we'd have to copy tensor here.
+    evaluator().execute(node_);
+  }
 }
 
 JitTensorBase& toJitTensorBase(const Tensor& tensor) {

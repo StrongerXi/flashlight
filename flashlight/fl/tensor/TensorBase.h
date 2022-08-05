@@ -92,6 +92,10 @@ class Tensor {
   // tensors in place with tensor operations, and only pulls out memory.
   friend class DevicePtr;
 
+  // shallowCopy() above is used in Evaluator given that it doesn't mutate
+  // tensors in place -- it only reads them as inputs.
+  friend class Evaluator;
+
  public:
   explicit Tensor(std::unique_ptr<TensorAdapterBase> adapter);
   virtual ~Tensor();

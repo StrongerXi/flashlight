@@ -33,10 +33,8 @@ TensorBackendType JitBackend::backendType() const {
 
 /* -------------------------- Compute Functions -------------------------- */
 
-void JitBackend::eval(const Tensor& /* tensor */) {
-  // Launch computation for a given tensor. Can be a noop for non-async
-  // runtimes.
-  FL_JIT_BACKEND_UNIMPLEMENTED;
+void JitBackend::eval(const Tensor& tensor) {
+  toJitTensorBase(tensor).eval();
 }
 
 bool JitBackend::supportsDataType(const fl::dtype& /* dtype */) const {
