@@ -14,6 +14,7 @@
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
 #include "flashlight/fl/tensor/backend/jit/opt/JitOptimizerExtension.h"
+#include "flashlight/fl/tensor/backend/jit/opt/JitOptimizerExtensionBackends.h"
 
 namespace fl {
 
