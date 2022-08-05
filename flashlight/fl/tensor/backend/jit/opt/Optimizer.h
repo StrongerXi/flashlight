@@ -15,9 +15,11 @@ namespace fl {
  * A JIT tree optimizer.
  */
 class Optimizer {
-  // TODO cache?
+  // backend used for optional JIT optimizer extension
+  TensorBackend& backend_;
+
 public:
-  Optimizer() = default;
+  explicit Optimizer(TensorBackend& backend);
 
   // Optimize the computation tree rooted at `node`
   std::shared_ptr<Node> optimize(std::shared_ptr<Node> node);

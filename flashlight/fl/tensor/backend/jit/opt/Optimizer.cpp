@@ -13,6 +13,7 @@
 #include "flashlight/fl/tensor/backend/jit/ir/CustomNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
+#include "flashlight/fl/tensor/backend/jit/opt/JitOptimizerExtension.h"
 
 namespace fl {
 
@@ -110,8 +111,15 @@ std::shared_ptr<Node> foldScalars(std::shared_ptr<Node> node) {
 
 } // namespace
 
+Optimizer::Optimizer(TensorBackend& backend) : backend_(backend) {}
+
 std::shared_ptr<Node> Optimizer::optimize(std::shared_ptr<Node> node) {
   node = foldScalars(node);
+  auto& registrar = detail::TensorExtensionRegistrar::getInstance();
+  if (registrar.isTensorExtensionRegistered(
+        backend_.backendType(), TensorExtensionType::JitOptimizer)) {
+    node = backend_.getExtension<JitOptimizerExtension>().optimize(node);
+  }
   return node;
 }
 
