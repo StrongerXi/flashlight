@@ -30,6 +30,11 @@ class JitTensor : public JitTensorBase {
     return wrappedBackend;
   }
 
+  Optimizer& optimizer() const override {
+    static Optimizer optimizer;
+    return optimizer;
+  }
+
   Evaluator& evaluator() const override {
     static Evaluator evaluator(wrappedBackend());
     return evaluator;

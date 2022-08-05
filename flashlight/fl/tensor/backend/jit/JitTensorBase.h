@@ -10,6 +10,7 @@
 #include "flashlight/fl/tensor/TensorAdapter.h"
 #include "flashlight/fl/tensor/backend/jit/Evaluator.h"
 #include "flashlight/fl/tensor/backend/jit/JitBackend.h"
+#include "flashlight/fl/tensor/backend/jit/Optimizer.h"
 #include "flashlight/fl/tensor/backend/jit/ir/Node.h"
 
 namespace fl {
@@ -33,7 +34,8 @@ class JitTensorBase : public TensorAdapterBase {
   // TODO
   virtual TensorBackend& wrappedBackend() const = 0;
 
-  // Allow JitTensor<T> to potentially inject things into Evaluator
+  // Allow JitTensor<T> to potentially inject things into Optimizer/Evaluator
+  virtual Optimizer& optimizer() const = 0;
   virtual Evaluator& evaluator() const = 0;
 
   JitTensorBase(std::shared_ptr<Node> node);

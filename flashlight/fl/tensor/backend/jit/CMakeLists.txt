@@ -10,4 +10,6 @@ target_sources(
   ${CMAKE_CURRENT_LIST_DIR}/JitBackend.cpp
   ${CMAKE_CURRENT_LIST_DIR}/JitTensorBase.cpp
   ${CMAKE_CURRENT_LIST_DIR}/Evaluator.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/Optimizer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/Utils.cpp
 )
