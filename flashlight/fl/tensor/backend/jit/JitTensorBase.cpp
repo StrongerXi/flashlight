@@ -7,6 +7,9 @@
 
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 
+#include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
+
 #include <sstream>
 
 #define FL_JIT_TENSOR_UNIMPLEMENTED \
@@ -16,33 +19,36 @@
 namespace fl {
 
 JitTensorBase::JitTensorBase(std::shared_ptr<Node> node)
-  : node_(std::move(node)) {
-  node_->incUseCount();
-}
+  : JitTensorBase(std::make_shared<SharedNode>(node)) {}
 
-JitTensorBase::~JitTensorBase() {
-  node_->decUseCount();
-}
+JitTensorBase::JitTensorBase(std::shared_ptr<SharedNode> sharedNode)
+  : sharedNode_(sharedNode) {}
+
+JitTensorBase::~JitTensorBase() {}
 
 void JitTensorBase::replaceNode(std::shared_ptr<Node> newNode) {
-  if (newNode != node_) {
+  const auto oldNode = node();
+  if (newNode != oldNode) {
     newNode->incUseCount();
-    node_->decUseCount();
-    node_ = newNode;
+    oldNode->decUseCount();
+    sharedNode_->node = newNode;
   }
 }
 
 const Tensor& JitTensorBase::getTensorOrEvalNode() {
   eval();
-  return node_->getResult().value();
+  return node()->getResult().value();
 }
 
 Tensor JitTensorBase::copy() {
-  FL_JIT_TENSOR_UNIMPLEMENTED;
+  // TODO materialize to force copy? We need to agree on the semantics of
+  // Tensor::copy()
+  return Tensor(clone());
 }
 
 Tensor JitTensorBase::shallowCopy() {
-  return fromNode(node_);
+  // NOTE IR-captured computation semantics is immutable
+  return fromSharedNode(sharedNode_);
 }
 
 TensorBackendType JitTensorBase::backendType() const {
@@ -136,47 +142,88 @@ std::ostream& JitTensorBase::operator<<(std::ostream& /* ostr */) {
 }
 
 /******************** Assignment Operators ********************/
-#define FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, TYPE)       \
-  void JitTensorBase::OP(const TYPE& /* val */) {             \
-    throw std::invalid_argument(                          \
-        "JitTensorBase::" + std::string(#OP) + " for type " + \
-        std::string(#TYPE));                              \
+// NOTE Think SSA:
+// x = 42
+// ......
+// --->
+// x' = 42
+// ...... (x becomes x')
+//
+// TODO for simplicity, we fall back to Tensor assignment for all other
+// assignment ops. Specialize when performance becomes an issue.
+void JitTensorBase::assign(const Tensor& other) {
+  replaceNode(toJitTensorBase(other).node());
+}
+
+#define FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, TYPE)                \
+  void JitTensorBase::OP(const TYPE& scalar) {                  \
+    const auto dtype = dtype_traits<TYPE>::ctype;               \
+    this->assign(backend().full(this->shape(), scalar, dtype)); \
   }
 
-#define FL_JIT_TENSOR_ASSIGN_OP_STUB(OP)                 \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, Tensor);         \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, double);         \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, float);          \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, int);            \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, unsigned);       \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, bool);           \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, char);           \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, unsigned char);  \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, short);          \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, unsigned short); \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, long);           \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, unsigned long);  \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, long long);      \
-  FL_JIT_TENSOR_ASSIGN_OP_TYPE_STUB(OP, unsigned long long);
+#define FL_JIT_TENSOR_ASSIGN_BINOP_TENSOR(OP, BINOP) \
+  void JitTensorBase::OP(const Tensor& other) {      \
+    this->assign(this->shallowCopy() BINOP other);   \
+  }
 
-FL_JIT_TENSOR_ASSIGN_OP_STUB(assign); // =
-FL_JIT_TENSOR_ASSIGN_OP_STUB(inPlaceAdd); // +=
-FL_JIT_TENSOR_ASSIGN_OP_STUB(inPlaceSubtract); // -=
-FL_JIT_TENSOR_ASSIGN_OP_STUB(inPlaceMultiply); // *=
-FL_JIT_TENSOR_ASSIGN_OP_STUB(inPlaceDivide); // /=
-#undef FL_JIT_TENSOR_ASSIGN_OP_TYPE
+#define FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, TYPE) \
+  void JitTensorBase::OP(const TYPE& scalar) {             \
+    this->assign(this->shallowCopy() BINOP scalar);        \
+  }
+
+#define FL_JIT_TENSOR_ASSIGN_OP(OP)                   \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, double);         \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, float);          \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, int);            \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, unsigned);       \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, bool);           \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, char);           \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, unsigned char);  \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, short);          \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, unsigned short); \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, long);           \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, unsigned long);  \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, long long);      \
+  FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, unsigned long long);
+
+#define FL_JIT_TENSOR_ASSIGN_BINOP(OP, BINOP)                   \
+  FL_JIT_TENSOR_ASSIGN_BINOP_TENSOR(OP, BINOP);                 \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, double);         \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, float);          \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, int);            \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, unsigned);       \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, bool);           \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, char);           \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, unsigned char);  \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, short);          \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, unsigned short); \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, long);           \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, unsigned long);  \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, long long);      \
+  FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR(OP, BINOP, unsigned long long);
+
+FL_JIT_TENSOR_ASSIGN_OP(assign);                // =
+FL_JIT_TENSOR_ASSIGN_BINOP(inPlaceAdd, +);      // +=
+FL_JIT_TENSOR_ASSIGN_BINOP(inPlaceSubtract, -); // -=
+FL_JIT_TENSOR_ASSIGN_BINOP(inPlaceMultiply, *); // *=
+FL_JIT_TENSOR_ASSIGN_BINOP(inPlaceDivide, /);   // /=
+#undef FL_JIT_TENSOR_ASSIGN_OP_SCALAR
+#undef FL_JIT_TENSOR_ASSIGN_BINOP_TENSOR
+#undef FL_JIT_TENSOR_ASSIGN_BINOP_SCALAR
 #undef FL_JIT_TENSOR_ASSIGN_OP
+#undef FL_JIT_TENSOR_ASSIGN_BINOP
 
-std::shared_ptr<Node> JitTensorBase::node() {
-  return node_;
+std::shared_ptr<Node> JitTensorBase::node() const {
+  return sharedNode_->node;
 }
 
 void JitTensorBase::eval() {
-  if (!node_->getResult().has_value()) {
-    replaceNode(optimizer().optimize(node_));
-    // TODO consider updating `node_` to a value node here, to help free up the
-    // graph nodes. It's not worth it now because we'd have to copy tensor here.
-    evaluator().execute(node_);
+  const auto node = this->node();
+  if (!node->getResult().has_value()) {
+    replaceNode(optimizer().optimize(node));
+    // TODO consider updating `node` to a value node here, to help free up the
+    // graph nodes. Investigate pros/cons of such graph-truncation
+    evaluator().execute(this->node()); // node might have changed
   }
 }
 
@@ -190,7 +237,7 @@ JitTensorBase& toJitTensorBase(const Tensor& tensor) {
   return tensor.getAdapter<JitTensorBase>();
 }
 
-JitTensorBase& toJitTensor(Tensor& tensor) {
+JitTensorBase& toJitTensorBase(Tensor& tensor) {
   return toJitTensorBase(static_cast<const Tensor&>(tensor));
 }
 

@@ -19,8 +19,8 @@ namespace fl {
 template <typename T>
 class JitTensor : public JitTensorBase {
  protected:
-  Tensor fromNode(std::shared_ptr<Node> node) const override {
-    return toTensor<JitTensor>(node);
+  Tensor fromSharedNode(std::shared_ptr<SharedNode> sharedNode) const override {
+    return toTensor<JitTensor>(sharedNode);
   }
 
   TensorBackend& wrappedBackend() const override {
@@ -48,8 +48,11 @@ class JitTensor : public JitTensorBase {
     return backend;
   }
 
+  // allow use to create smart pointer of this derived class
   explicit JitTensor(std::shared_ptr<Node> node)
       : JitTensorBase(std::move(node)) {}
+  explicit JitTensor(std::shared_ptr<SharedNode> sharedNode)
+      : JitTensorBase(std::move(sharedNode)) {}
 
   JitTensor() : JitTensor({0}, fl::dtype::f32, nullptr, Location::Host) {}
 
@@ -79,8 +82,8 @@ class JitTensor : public JitTensorBase {
     : JitTensorBase(ValueNode::create(toTensor<T>(nRows, nCols, values, rowIdx, colIdx, storageType))) {}
 
   std::unique_ptr<TensorAdapterBase> clone() const override {
-    // TODO copy node
-    throw std::runtime_error("[JitTensor] clone not supported");
+    // NOTE IR-captured computation semantics is immutable
+    return std::make_unique<JitTensor>(node());
   }
 };
 

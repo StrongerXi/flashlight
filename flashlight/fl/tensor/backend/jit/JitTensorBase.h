@@ -20,7 +20,24 @@ namespace fl {
  * computation graph and delegates to the wrapped backend for execution.
  */
 class JitTensorBase : public TensorAdapterBase {
-  std::shared_ptr<Node> node_;
+ public:
+  // shared among shallow copies
+  // NOTE !!Internal use only!!
+  // TODO made public to enable `std::make_shared`.
+  // Consider using same trick as `...Node::create` to make this protected
+  struct SharedNode {
+    std::shared_ptr<Node> node;
+    SharedNode(std::shared_ptr<Node> node) : node(node) {
+      node->incUseCount(); // shallow copies counts as 1 use
+    }
+    ~SharedNode() {
+      node->decUseCount();
+    }
+  };
+
+ private:
+  // for shallow copy
+  std::shared_ptr<SharedNode> sharedNode_;
 
   // take care of inc/dec node use count
   void replaceNode(std::shared_ptr<Node> newNode);
@@ -30,7 +47,8 @@ class JitTensorBase : public TensorAdapterBase {
 
  protected:
   // this allows us to create an instance of derived class
-  virtual Tensor fromNode(std::shared_ptr<Node> node) const = 0;
+  virtual
+  Tensor fromSharedNode(std::shared_ptr<SharedNode> sharedNode) const = 0;
 
   // let derived class manage the wrapped backend
   virtual TensorBackend& wrappedBackend() const = 0;
@@ -41,6 +59,7 @@ class JitTensorBase : public TensorAdapterBase {
 
   // JitTensorBase manages the backend-agnostic JIT node.
   JitTensorBase(std::shared_ptr<Node> node);
+  JitTensorBase(std::shared_ptr<SharedNode> sharedNode);
 
  public:
   virtual ~JitTensorBase() override;
@@ -70,7 +89,8 @@ class JitTensorBase : public TensorAdapterBase {
   std::string toString() override;
   std::ostream& operator<<(std::ostream& ostr) override;
 
-  std::shared_ptr<Node> node();
+  // NOTE `const` w.r.t. the underlying Tensor this represents.
+  std::shared_ptr<Node> node() const;
   void eval();
 
   /******************** Assignment Operators ********************/
