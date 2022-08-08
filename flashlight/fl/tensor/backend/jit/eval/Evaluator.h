@@ -13,6 +13,7 @@
 #include "flashlight/fl/tensor/TensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/CustomNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/IndexNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 
 namespace fl {
@@ -33,6 +34,7 @@ class Evaluator {
   // evaluate and set result without checking for existing result
   void evalBinaryNode(BinaryNode& node);
   void evalCustomNode(CustomNode& node);
+  void evalIndexNode(IndexNode& node);
   void evalScalarNode(ScalarNode& node);
 
   // helpers that evaluates without setting results

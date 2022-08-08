@@ -8,6 +8,7 @@
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 
 #include <sstream>
+#include <stdexcept>
 
 #define FL_JIT_TENSOR_UNIMPLEMENTED \
   throw std::invalid_argument(      \
@@ -15,31 +16,121 @@
 
 namespace fl {
 
-struct JitTensorBase::ShareData {
+struct JitTensorBase::SharedData {
   Node* node;
-  ShareData(Node* node) : node(node) {
-    node->incRefCount();
+
+  SharedData(Node* node) : node(node) {
+    node->incRefCount(); // shallow copies counts as 1 use
   }
-  ~ShareData() {
+
+  ~SharedData() {
     node->decRefCount();
+  }
+
+  void replaceNode(Node* newNode) {
+    newNode->incRefCount();
+    node->decRefCount();
+    node = newNode;
+  }
+};
+
+// `t(x)` and `t(x)(y)` share the same node, but different index; but we can't
+// materialize into view node because the shared node may get updated due to
+// assignment, so we lazily materialize index into view node.
+struct JitTensorBase::SharedIndexing {
+  // nullptr & std::nullopt if we haven't materialized any indexing
+  Node* dataNode{nullptr};
+  std::optional<Node*> viewNode{std::nullopt};
+  // TODO consider
+  // 1. using an immutable linked-list here to speed things up
+  // 2. making `std::vector<Index>` into an immutable class and use it as
+  //    shared_ptr, since it's all readonly -- JitTensor gives us free
+  //    immutability for Tensor index.
+  // 3. index merging (might require canonicalization) -- maybe as an
+  //    optimization pass, need to think more.
+  const std::vector<std::vector<Index>> indexings{};
+
+  SharedIndexing() = default;
+
+  SharedIndexing(std::vector<std::vector<Index>> indexings)
+    : indexings(std::move(indexings)) {}
+
+  ~SharedIndexing() {
+    if (viewNode.has_value()) {
+      viewNode.value()->decRefCount();
+    }
+  }
+
+  void replaceNode(Node* newNode) {
+    // TODO should we enforce `indexNode.has_value()` here?
+    newNode->incRefCount();
+    if (viewNode.has_value()) {
+      viewNode.value()->decRefCount();
+    }
+    viewNode = newNode;
+  }
+
+  const std::vector<Index>& getIndex() {
+    if (indexings.size() > 1) {
+      // TODO rare, but see comment around `indexings` field
+      throw std::runtime_error(
+          "[SharedIndexing::getIndex] Currently no support for nested indexing");
+    }
+    return indexings[0];
+  }
+
+  Node* getViewNode(std::shared_ptr<SharedData> sharedData) {
+    if (dataNode != sharedData->node) {
+      // must materialize
+      const auto newIndexNode =
+        IndexNode::create(sharedData->node, getIndex());
+      newIndexNode->incRefCount();
+      if (viewNode.has_value()) {
+        viewNode.value()->decRefCount();
+      }
+      viewNode = newIndexNode;
+      dataNode = sharedData->node;
+    }
+    return viewNode.value();
+  }
+
+  std::shared_ptr<SharedIndexing> applyIndices(std::vector<Index> indices) {
+    std::vector<std::vector<Index>> newIndexings = this->indexings;
+    newIndexings.push_back(std::move(indices));
+    // refreshes indexNode cache,
+    // TODO ideally we coulve retain some info here for performance, e.g., the
+    // next IndexNode can build on top of existing one (if any).
+    return std::make_shared<SharedIndexing>(newIndexings);
   }
 };
 
 JitTensorBase::JitTensorBase(Node* node)
-    : JitTensorBase(std::make_shared<ShareData>(node)) {}
+    : JitTensorBase(std::make_shared<SharedData>(node)) {}
 
-JitTensorBase::JitTensorBase(std::shared_ptr<ShareData> sharedNode)
-    : sharedNode_(sharedNode) {}
+JitTensorBase::JitTensorBase(std::shared_ptr<SharedData> sharedData)
+    : JitTensorBase(sharedData, std::make_shared<SharedIndexing>()) {}
+
+JitTensorBase::JitTensorBase(
+    std::shared_ptr<SharedData> sharedData,
+    std::shared_ptr<SharedIndexing> sharedIndexing)
+    : sharedData_(sharedData), sharedIndexing_(sharedIndexing) {}
 
 JitTensorBase::~JitTensorBase() {}
 
 void JitTensorBase::replaceNode(Node* newNode) const {
-  auto oldNode = node();
-  if (newNode != oldNode) {
-    newNode->incRefCount();
-    oldNode->decRefCount();
-    sharedNode_->node = newNode;
+  if (hasIndexing()) {
+    sharedIndexing_->replaceNode(newNode);
+  } else {
+    replaceDataNode(newNode);
   }
+}
+
+bool JitTensorBase::hasIndexing() const {
+  return !sharedIndexing_->indexings.empty();
+}
+
+void JitTensorBase::replaceDataNode(Node* newNode) const {
+  sharedData_->replaceNode(newNode);
 }
 
 const Tensor& JitTensorBase::getTensorOrEvalNode() const {
@@ -56,7 +147,7 @@ Tensor JitTensorBase::copy() {
 
 Tensor JitTensorBase::shallowCopy() {
   // NOTE IR-captured computation semantics is immutable
-  return fromSharedNode(sharedNode_);
+  return fromSharedData(sharedData_, sharedIndexing_);
 }
 
 TensorBackendType JitTensorBase::backendType() const {
@@ -115,8 +206,8 @@ Tensor JitTensorBase::astype(const dtype /* type */) {
   FL_JIT_TENSOR_UNIMPLEMENTED;
 }
 
-Tensor JitTensorBase::index(const std::vector<Index>& /* indices */) {
-  FL_JIT_TENSOR_UNIMPLEMENTED;
+Tensor JitTensorBase::index(const std::vector<Index>& indices) {
+  return fromSharedData(sharedData_, sharedIndexing_->applyIndices(indices));
 }
 
 Tensor JitTensorBase::flatten() const {
@@ -157,6 +248,10 @@ std::ostream& JitTensorBase::operator<<(std::ostream& /* ostr */) {
 // x' = x + 42
 // ...... (uses of x becomes x')
 void JitTensorBase::assign(const Tensor& other) {
+  if (hasIndexing()) {
+    throw std::runtime_error(
+        "[JitTensorBase::assign] Currently no support for indexed update");
+  }
   replaceNode(toJitTensorBase(other).node());
 }
 
@@ -219,7 +314,11 @@ FL_JIT_TENSOR_ASSIGN_BINOP(inPlaceDivide, /); // /=
 #undef FL_JIT_TENSOR_ASSIGN_BINOP
 
 Node* JitTensorBase::node() const {
-  return sharedNode_->node;
+  if (hasIndexing()) {
+    return sharedIndexing_->getViewNode(sharedData_);
+  } else {
+    return sharedData_->node;
+  }
 }
 
 void JitTensorBase::eval() const {

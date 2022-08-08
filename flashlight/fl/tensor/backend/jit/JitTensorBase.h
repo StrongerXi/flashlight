@@ -7,10 +7,12 @@
 
 #pragma once
 
+#include "flashlight/fl/tensor/Index.h"
 #include "flashlight/fl/tensor/TensorAdapter.h"
 #include "flashlight/fl/tensor/backend/jit/JitBackend.h"
 #include "flashlight/fl/tensor/backend/jit/eval/Evaluator.h"
 #include "flashlight/fl/tensor/backend/jit/ir/Node.h"
+#include "flashlight/fl/tensor/backend/jit/ir/IndexNode.h"
 #include "flashlight/fl/tensor/backend/jit/opt/Optimizer.h"
 
 namespace fl {
@@ -22,23 +24,37 @@ namespace fl {
 class JitTensorBase : public TensorAdapterBase {
  public:
   // declaration made private to enable `std::make_shared`
-  struct ShareData;
+  struct SharedData;
+  struct SharedIndexing;
 
  private:
   // shared among shallow copies
-  std::shared_ptr<ShareData> sharedNode_;
+  std::shared_ptr<SharedData> sharedNode_;
 
-  // take care of refcount for old & new nodes
-  // `const` w.r.t. the underlying Tensor this represents.
+ private:
+  // for shallow copy
+  std::shared_ptr<SharedData> sharedData_;
+  std::shared_ptr<SharedIndexing> sharedIndexing_;
+  // TODO make sharedIndexing_ optional since most tensors likely aren't
+  // indexed. It makes the design cleaner since we can have the invariant --
+  // `!indexings.empty()`
+
+  bool hasIndexing() const;
+
+  // take care of inc/dec node use count; also see `node()` documentation for
+  // interpretation of `Node` here.
   void replaceNode(Node* newNode) const;
+  void replaceDataNode(Node* newNode) const;
 
   // return the wrapped tensor, not a JitTensorBase
   const Tensor& getTensorOrEvalNode() const;
 
  protected:
   // this allows us to create an instance of derived class
-  virtual Tensor fromSharedNode(
-      std::shared_ptr<ShareData> sharedNode) const = 0;
+  virtual
+  Tensor fromSharedData(
+      std::shared_ptr<SharedData> sharedData,
+      std::shared_ptr<SharedIndexing> sharedIndexing) const = 0;
 
   // let derived class manage the wrapped backend
   virtual TensorBackend& wrappedBackend() const = 0;
@@ -49,7 +65,10 @@ class JitTensorBase : public TensorAdapterBase {
 
   // JitTensorBase manages the backend-agnostic JIT node.
   JitTensorBase(Node* node);
-  JitTensorBase(std::shared_ptr<ShareData> sharedNode);
+  JitTensorBase(std::shared_ptr<SharedData> sharedData);
+  JitTensorBase(
+      std::shared_ptr<SharedData> sharedData,
+      std::shared_ptr<SharedIndexing> sharedIndexing);
 
  public:
   virtual ~JitTensorBase() override;
@@ -81,6 +100,11 @@ class JitTensorBase : public TensorAdapterBase {
 
   /**
    * Return the node this JIT tensor represents.
+   * NOTE
+   * 1. `const` w.r.t. the underlying Tensor this represents.
+   * 2. return a node that represents the underlying Tensor, i.e., if there is
+   *    indexing, take care of it.
+   * TODO more specific name -- viewNode?
    */
   Node* node() const;
 

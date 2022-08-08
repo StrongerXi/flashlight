@@ -54,6 +54,21 @@ void Evaluator::evalCustomNode(CustomNode& node) {
   node.setResult(node.evalFunc()(inputTensors));
 }
 
+void Evaluator::evalIndexNode(IndexNode& node) {
+  std::vector<Index> indices;
+  for (const auto& index : node.indices()) {
+    if (index.type() == detail::IndexType::Tensor) {
+      const auto tensorIndexNode = toJitTensorBase(index.get<Tensor>()).node();
+      evalNode(tensorIndexNode);
+      indices.push_back(tensorIndexNode->getResult().value());
+    } else {
+      indices.push_back(index);
+    }
+  }
+  evalNode(node.indexedNode());
+  node.setResult(node.indexedNode()->getResult().value()(indices));
+}
+
 void Evaluator::evalScalarNode(ScalarNode& node) {
   node.setResult(evalScalar(node));
 }
@@ -102,6 +117,8 @@ void Evaluator::evalNodeDispatch(Node* node) {
       return evalBinaryNode(node->impl<BinaryNode>());
     case NodeType::Custom:
       return evalCustomNode(node->impl<CustomNode>());
+    case NodeType::Index:
+      return evalIndexNode(node->impl<IndexNode>());
     case NodeType::Scalar:
       return evalScalarNode(node->impl<ScalarNode>());
     case NodeType::Value:
