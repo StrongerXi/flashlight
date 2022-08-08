@@ -172,9 +172,7 @@ Node* OneDnnOpFusion::fuseNodes(Node* node, SearchState& state) {
                       const std::vector<const Tensor*>& inputs) {
     const Tensor* lhs = inputs[0];
     const Tensor* rhs = inputs[1];
-    // TODO
-    // - once we have shape inference, we know shapes will be compatible here
-    // - also support broadcast (see OneDNNBackend binop impl)
+    // TODO also support broadcast (see OneDNNBackend binop impl)
     if (!allHaveSameShapes(inputs)) {
       throw std::runtime_error("[BinaryOpFuser] inputs must have same shapes");
     }
@@ -230,7 +228,10 @@ Node* OneDnnOpFusion::fuseNodes(Node* node, SearchState& state) {
   };
 
   return CustomNode::create(
-      "OneDnnFusedBinaryOp", std::move(inputNodes), std::move(evalFunc));
+      "OneDnnFusedBinaryOp",
+      std::move(inputNodes),
+      node->shape(),
+      std::move(evalFunc));
 }
 
 Node* OneDnnOpFusion::apply(Node* root) {

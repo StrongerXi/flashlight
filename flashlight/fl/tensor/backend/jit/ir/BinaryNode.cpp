@@ -6,14 +6,21 @@
  */
 
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
+#include <stdexcept>
 
 namespace fl {
 
-BinaryNode::BinaryNode(Node* lhs, Node* rhs, BinaryOp op)
-    : NodeTrait({lhs, rhs}), op_(op) {}
+BinaryNode::BinaryNode(Node* lhs, Node* rhs, BinaryOp op, const Shape& shape)
+    : NodeTrait({lhs, rhs}, shape), op_(op) {}
 
 BinaryNode* BinaryNode::create(Node* lhs, Node* rhs, BinaryOp op) {
-  return new BinaryNode(lhs, rhs, op);
+    // TODO support broadcast
+  if (lhs->shape() != rhs->shape()) {
+    throw std::runtime_error(
+        "[BinaryNode::BinaryNode] Shape inference doesn't support broadcast yet"
+    );
+  }
+  return new BinaryNode(lhs, rhs, op, lhs->shape());
 }
 
 BinaryOp BinaryNode::op() const {
