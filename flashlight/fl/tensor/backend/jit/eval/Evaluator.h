@@ -11,6 +11,7 @@
 #include "flashlight/fl/tensor/TensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/CustomNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/IndexNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 
 namespace fl {
@@ -25,6 +26,7 @@ class Evaluator {
 
   const Tensor evalBinaryNode(BinaryNode& node);
   const Tensor evalCustomNode(CustomNode& node);
+  const Tensor evalIndexNode(IndexNode& node);
   const Tensor evalScalarNode(ScalarNode& node);
   const Tensor getTensorOrEvalNode(std::shared_ptr<Node> node);
 

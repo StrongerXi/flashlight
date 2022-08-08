@@ -11,6 +11,7 @@
 #include "flashlight/fl/tensor/TensorExtension.h"
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/CustomNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/IndexNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
 #include "flashlight/fl/tensor/backend/jit/opt/JitOptimizerExtension.h"
@@ -69,10 +70,10 @@ std::shared_ptr<ScalarNode> foldScalarNodes(
 std::shared_ptr<Node> foldScalars(std::shared_ptr<Node> node);
 
 std::shared_ptr<Node> foldScalarsInBinaryNode(std::shared_ptr<Node> node) {
-  const auto& binaryRoot = node->impl<BinaryNode>();
-  const auto binop = binaryRoot.op();
-  const auto oldLhs = binaryRoot.lhs();
-  const auto oldRhs = binaryRoot.rhs();
+  const auto& binaryNode = node->impl<BinaryNode>();
+  const auto binop = binaryNode.op();
+  const auto oldLhs = binaryNode.lhs();
+  const auto oldRhs = binaryNode.rhs();
   const auto newLhs = foldScalars(oldLhs);
   const auto newRhs = foldScalars(oldRhs);
   // no need to check `mustMaterialize`, because if we can fold scalars, the
@@ -95,11 +96,18 @@ std::shared_ptr<Node> foldScalarsInBinaryNode(std::shared_ptr<Node> node) {
 }
 
 std::shared_ptr<Node> foldScalars(std::shared_ptr<Node> node) {
+  // TODO
+  // 1. go crazy -- we can even optimize the (Jit)Tensor indices.
+  // 2. time for a visitor to take care of
+  //    - "not create new node if inputs didn't change"
+  //    - traversing nodes we don't care about by default
   switch (node->type()) {
     case NodeType::Binary: return foldScalarsInBinaryNode(node);
+    case NodeType::Index:
     case NodeType::Custom:
     case NodeType::Scalar:
-    case NodeType::Value: return node;
+    case NodeType::Value:
+      return node->mapInputs([](auto input) { return foldScalars(input); });
   }
   throw std::runtime_error("Unknown node type");
 }

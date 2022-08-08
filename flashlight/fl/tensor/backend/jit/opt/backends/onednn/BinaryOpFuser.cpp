@@ -10,6 +10,7 @@
 
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/CustomNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/IndexNode.h"
 #include "flashlight/fl/tensor/backend/jit/opt/backends/onednn/BinaryOpFuser.h"
 #include "flashlight/fl/tensor/backend/onednn/OneDnnBackend.h"
 #include "flashlight/fl/tensor/backend/onednn/OneDnnTensor.h"
@@ -138,6 +139,8 @@ unsigned propogateProfitableFuseChainLengths(
       break;
     }
     case NodeType::Custom:
+    // TODO go crazy and optimize the tensor indices
+    case NodeType::Index:
     case NodeType::Scalar:
     case NodeType::Value: {
        // chain stops at these nodes (they are leaf data)

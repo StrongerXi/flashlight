@@ -19,6 +19,7 @@ enum class NodeType {
   Custom,
   Scalar,
   Value,
+  Index,
 };
 
 /**

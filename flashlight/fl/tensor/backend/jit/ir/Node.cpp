@@ -82,6 +82,10 @@ bool Node::isCustom() const {
   return type() == NodeType::Custom;
 }
 
+bool Node::isIndex() const {
+  return type() == NodeType::Index;
+}
+
 bool Node::isScalar() const {
   return type() == NodeType::Scalar;
 }

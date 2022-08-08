@@ -7,6 +7,7 @@
 
 #include "flashlight/fl/tensor/backend/jit/eval/Evaluator.h"
 
+#include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
 
 namespace fl {
@@ -31,6 +32,19 @@ const Tensor Evaluator::evalCustomNode(CustomNode& node) {
     inputTensors.emplace_back(getTensorOrEvalNode(inputNode));
   }
   return node.evalFunc()(inputTensors);
+}
+
+const Tensor Evaluator::evalIndexNode(IndexNode& node) {
+  std::vector<Index> indices;
+  for (const auto& index : node.indices()) {
+    if (index.type() == detail::IndexType::Tensor) {
+      const auto tensorIndexNode = toJitTensorBase(index.get<Tensor>()).node();
+      indices.push_back(getTensorOrEvalNode(tensorIndexNode));
+    } else {
+      indices.push_back(index);
+    }
+  }
+  return getTensorOrEvalNode(node.indexedNode())(indices);
 }
 
 const Tensor Evaluator::evalScalarNode(ScalarNode& node) {
@@ -69,6 +83,7 @@ const Tensor Evaluator::getTensorOrEvalNode(std::shared_ptr<Node> node) {
     switch (node->type()) {
       case NodeType::Binary: return evalBinaryNode(node->impl<BinaryNode>());
       case NodeType::Custom: return evalCustomNode(node->impl<CustomNode>());
+      case NodeType::Index: return evalIndexNode(node->impl<IndexNode>());
       case NodeType::Scalar: return evalScalarNode(node->impl<ScalarNode>());
       case NodeType::Value:
         // read-only shallow copy

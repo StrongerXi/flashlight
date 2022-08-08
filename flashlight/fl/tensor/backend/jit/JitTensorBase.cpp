@@ -11,6 +11,7 @@
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 
 #include <sstream>
+#include <stdexcept>
 
 #define FL_JIT_TENSOR_UNIMPLEMENTED \
   throw std::invalid_argument(       \
@@ -19,20 +20,28 @@
 namespace fl {
 
 JitTensorBase::JitTensorBase(std::shared_ptr<Node> node)
-  : JitTensorBase(std::make_shared<SharedNode>(node)) {}
+  : JitTensorBase(std::make_shared<SharedData>(node)) {}
 
-JitTensorBase::JitTensorBase(std::shared_ptr<SharedNode> sharedNode)
-  : sharedNode_(sharedNode) {}
+JitTensorBase::JitTensorBase(std::shared_ptr<SharedData> sharedData)
+  : JitTensorBase(sharedData, std::make_shared<SharedIndexing>()) {}
+
+JitTensorBase::JitTensorBase(
+    std::shared_ptr<SharedData> sharedData,
+    std::shared_ptr<SharedIndexing> sharedIndexing)
+  : sharedData_(sharedData), sharedIndexing_(sharedIndexing) {}
 
 JitTensorBase::~JitTensorBase() {}
 
 void JitTensorBase::replaceNode(std::shared_ptr<Node> newNode) {
-  const auto oldNode = node();
-  if (newNode != oldNode) {
-    newNode->incUseCount();
-    oldNode->decUseCount();
-    sharedNode_->node = newNode;
+  if (hasIndexing()) {
+    sharedIndexing_->replaceNode(newNode);
+  } else {
+    replaceDataNode(newNode);
   }
+}
+
+void JitTensorBase::replaceDataNode(std::shared_ptr<Node> newNode) {
+  sharedData_->replaceNode(newNode);
 }
 
 const Tensor& JitTensorBase::getTensorOrEvalNode() {
@@ -48,7 +57,7 @@ Tensor JitTensorBase::copy() {
 
 Tensor JitTensorBase::shallowCopy() {
   // NOTE IR-captured computation semantics is immutable
-  return fromSharedNode(sharedNode_);
+  return fromSharedData(sharedData_, sharedIndexing_);
 }
 
 TensorBackendType JitTensorBase::backendType() const {
@@ -107,8 +116,8 @@ Tensor JitTensorBase::astype(const dtype /* type */) {
   FL_JIT_TENSOR_UNIMPLEMENTED;
 }
 
-Tensor JitTensorBase::index(const std::vector<Index>& /* indices */) {
-  FL_JIT_TENSOR_UNIMPLEMENTED;
+Tensor JitTensorBase::index(const std::vector<Index>& indices) {
+  return fromSharedData(sharedData_, sharedIndexing_->applyIndices(indices));
 }
 
 Tensor JitTensorBase::flatten() const {
@@ -152,6 +161,10 @@ std::ostream& JitTensorBase::operator<<(std::ostream& /* ostr */) {
 // TODO for simplicity, we fall back to Tensor assignment for all other
 // assignment ops. Specialize when performance becomes an issue.
 void JitTensorBase::assign(const Tensor& other) {
+  if (hasIndexing()) {
+    throw std::runtime_error(
+        "[JitTensorBase::assign] Currently no support for indexed update");
+  }
   replaceNode(toJitTensorBase(other).node());
 }
 
@@ -214,7 +227,11 @@ FL_JIT_TENSOR_ASSIGN_BINOP(inPlaceDivide, /);   // /=
 #undef FL_JIT_TENSOR_ASSIGN_BINOP
 
 std::shared_ptr<Node> JitTensorBase::node() const {
-  return sharedNode_->node;
+  if (hasIndexing()) {
+    return sharedIndexing_->getViewNode(sharedData_);
+  } else {
+    return sharedData_->node;
+  }
 }
 
 void JitTensorBase::eval() {
