@@ -49,6 +49,8 @@ class JitTensorBase : public TensorAdapterBase {
   // return the wrapped tensor, not a JitTensorBase
   const Tensor& getTensorOrEvalNode() const;
 
+  Tensor fromNode(Node* node) const;
+
  protected:
   // this allows us to create an instance of derived class
   virtual
