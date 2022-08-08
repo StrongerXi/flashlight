@@ -141,6 +141,10 @@ bool Node::isIndex() const {
   return type() == NodeType::Index;
 }
 
+bool Node::isIndexedMerge() const {
+  return type() == NodeType::IndexedMerge;
+}
+
 bool Node::isScalar() const {
   return type() == NodeType::Scalar;
 }

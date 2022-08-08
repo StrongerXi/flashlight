@@ -55,18 +55,34 @@ void Evaluator::evalCustomNode(CustomNode& node) {
 }
 
 void Evaluator::evalIndexNode(IndexNode& node) {
-  std::vector<Index> indices;
-  for (const auto& index : node.indices()) {
+  evalNode(node.indexedNode());
+  const auto& indexedTensor = node.indexedNode()->getResult().value();
+  node.setResult(indexedTensor(evalIndices(node.indices())));
+}
+
+void Evaluator::evalIndexedMergeNode(IndexedMergeNode& node) {
+  evalNode(node.indexedNode());
+  // TODO no need to copy if indexedNode has only 1 user here
+  auto indexedTensor = node.indexedNode()->getResult().value().copy();
+  const auto evaluatedIndices = evalIndices(node.indices());
+  evalNode(node.mergeSourceNode());
+  const auto& mergeSourceTensor = node.mergeSourceNode()->getResult().value();
+  indexedTensor(evaluatedIndices) = mergeSourceTensor;
+  node.setResult(std::move(indexedTensor));
+}
+
+std::vector<Index> Evaluator::evalIndices(const std::vector<Index>& indices) {
+  std::vector<Index> evaluatedIndices;
+  for (const auto& index : indices) {
     if (index.type() == detail::IndexType::Tensor) {
       const auto tensorIndexNode = toJitTensorBase(index.get<Tensor>()).node();
       evalNode(tensorIndexNode);
-      indices.push_back(tensorIndexNode->getResult().value());
+      evaluatedIndices.push_back(tensorIndexNode->getResult().value());
     } else {
-      indices.push_back(index);
+      evaluatedIndices.push_back(index);
     }
   }
-  evalNode(node.indexedNode());
-  node.setResult(node.indexedNode()->getResult().value()(indices));
+  return evaluatedIndices;
 }
 
 void Evaluator::evalScalarNode(ScalarNode& node) {
@@ -119,6 +135,8 @@ void Evaluator::evalNodeDispatch(Node* node) {
       return evalCustomNode(node->impl<CustomNode>());
     case NodeType::Index:
       return evalIndexNode(node->impl<IndexNode>());
+    case NodeType::IndexedMerge:
+      return evalIndexedMergeNode(node->impl<IndexedMergeNode>());
     case NodeType::Scalar:
       return evalScalarNode(node->impl<ScalarNode>());
     case NodeType::Value:

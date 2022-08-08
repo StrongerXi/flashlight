@@ -14,6 +14,7 @@
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/CustomNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/IndexNode.h"
+#include "flashlight/fl/tensor/backend/jit/ir/IndexedMergeNode.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ScalarNode.h"
 
 namespace fl {
@@ -35,6 +36,8 @@ class Evaluator {
   void evalBinaryNode(BinaryNode& node);
   void evalCustomNode(CustomNode& node);
   void evalIndexNode(IndexNode& node);
+  void evalIndexedMergeNode(IndexedMergeNode& node);
+  std::vector<Index> evalIndices(const std::vector<Index>& indices);
   void evalScalarNode(ScalarNode& node);
 
   // helpers that evaluates without setting results

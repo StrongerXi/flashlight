@@ -7,6 +7,8 @@
 
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 
+#include "flashlight/fl/tensor/backend/jit/ir/IndexedMergeNode.h"
+
 #include <sstream>
 #include <stdexcept>
 
@@ -249,10 +251,20 @@ std::ostream& JitTensorBase::operator<<(std::ostream& /* ostr */) {
 // ...... (uses of x becomes x')
 void JitTensorBase::assign(const Tensor& other) {
   if (hasIndexing()) {
-    throw std::runtime_error(
-        "[JitTensorBase::assign] Currently no support for indexed update");
+    // Again, SSA, but this time we can't fall back to existing ops, i.e., we
+    // must increase the expressivity of our IR, thus a new IR node --
+    // `IndexedMerge`. NOTE We let backend can optimize such patterns to avoid
+    // redundant memory alloc, e.g., by dispatching to the more efficient
+    // `Tensor::[...]assign(...)`
+    const auto& indices = sharedIndexing_->getIndex();
+    const auto thisDataNode = this->sharedData_->node;
+    const auto otherNode = toJitTensorBase(other).node();
+    const auto mergeNode =
+        IndexedMergeNode::create(thisDataNode, indices, otherNode);
+    replaceDataNode(mergeNode);
+  } else {
+    replaceNode(toJitTensorBase(other).node());
   }
-  replaceNode(toJitTensorBase(other).node());
 }
 
 #define FL_JIT_TENSOR_ASSIGN_OP_SCALAR(OP, TYPE)                \

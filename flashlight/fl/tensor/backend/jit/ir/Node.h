@@ -94,6 +94,7 @@ class Node {
   bool isIndex() const;
   bool isScalar() const;
   bool isValue() const;
+  bool isIndexedMerge() const;
 
   // Fast & safe casts
   virtual NodeType type() const = 0;

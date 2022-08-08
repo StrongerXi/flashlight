@@ -79,7 +79,7 @@ TEST(JitNodeTest, CustomNodeMetaData) {
   const auto t2 = full(shape, 23, type);
   const auto name = "foobar";
   const auto node = CustomNode::create(
-      name, {c1, c2}, [](const std::vector<const Tensor*>& inputs) -> Tensor {
+      name, {c1, c2}, shape, [](const std::vector<const Tensor*>& inputs) -> Tensor {
         return inputs.at(0)->copy();
       });
   ASSERT_EQ(node->inputs(), NodeList({c1, c2}));
