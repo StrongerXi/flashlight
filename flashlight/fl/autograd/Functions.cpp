@@ -1075,6 +1075,10 @@ Variable binaryCrossEntropy(const Variable& inputs, const Variable& targets) {
       targetsTyped * log(inputs) + (1 - targetsTyped) * log(1 - inputs));
 }
 
+Tensor flatten(const Tensor& tensor) {
+  return fl::reshape(tensor, Shape({ tensor.shape().elements() }));
+}
+
 Variable categoricalCrossEntropy(
     const Variable& in,
     const Variable& targets,
@@ -1114,9 +1118,13 @@ Variable categoricalCrossEntropy(
   auto mask = -(A == B); // [C X]
 
   auto result = mask * x;
-  auto ignoreMask = (y == ignoreIndex).flatten(); // [X, 1]
-  result = fl::sum(result, {0}).flatten(); // [X, 1]
-  result(ignoreMask) = 0.;
+  //auto ignoreMask = (y == ignoreIndex).flatten(); // [X, 1]
+  //result = fl::sum(result, {0}).flatten(); // [X, 1]
+  auto ignoreMask = fl::flatten(y == ignoreIndex);
+  result = fl::flatten(fl::sum(result, {0}));
+  if (ignoreIndex != -1) {
+    result(ignoreMask) = 0.;
+  }
 
   Tensor denominator;
   if (reduction == ReduceMode::NONE) {
@@ -1132,7 +1140,7 @@ Variable categoricalCrossEntropy(
   }
 
   auto inputDims = input.shape();
-  auto gradFunc = [C, X, mask, ignoreMask, denominator, reduction, inputDims](
+  auto gradFunc = [C, X, mask, ignoreMask, denominator, reduction, inputDims, ignoreIndex](
                       std::vector<Variable>& inputs,
                       const Variable& gradOutput) {
     Tensor grad = gradOutput.tensor();
@@ -1144,7 +1152,9 @@ Variable categoricalCrossEntropy(
       grad = fl::tile(grad, {X});
     }
     // [1 X]
-    grad(ignoreMask) = 0.;
+    if (ignoreIndex != -1) {
+      grad(ignoreMask) = 0.;
+    }
     grad = fl::reshape(grad, {1, X});
     grad = fl::tile(grad, {C}) * mask;
     inputs[0].addGrad(Variable(fl::reshape(grad, inputDims), false));

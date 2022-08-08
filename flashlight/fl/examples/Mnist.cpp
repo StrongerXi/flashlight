@@ -32,6 +32,9 @@
 #include "flashlight/fl/optim/optim.h"
 #include "flashlight/fl/tensor/Index.h"
 #include "flashlight/fl/tensor/Random.h"
+#include "flashlight/fl/tensor/backend/af/ArrayFireTensor.h"
+#include "flashlight/fl/tensor/backend/onednn/OneDnnTensor.h"
+#include "flashlight/fl/autograd/tensor/backend/onednn/OneDnnAutogradExtension.h"
 
 using namespace fl;
 
@@ -86,6 +89,9 @@ int main(int argc, char** argv) {
   if (argc != 2) {
     throw std::runtime_error("You must pass a data directory.");
   }
+  fl::registerTensorExtension<OneDnnAutogradExtension>(TensorBackendType::OneDnn);
+  fl::setDefaultTensorType<OneDnnTensor>();
+
   fl::setSeed(1);
   std::string data_dir = argv[1];
 
@@ -167,6 +173,11 @@ int main(int argc, char** argv) {
       loss.backward();
       opt.step();
       opt.zeroGrad();
+
+      std::cout << "Epoch " << e << std::setprecision(3)
+                << ": Train Loss: " << loss.tensor().scalar<float>()
+                << ": Avg Train Loss: " << train_loss_meter.value()[0]
+                << std::endl;
     }
 
     double train_loss = train_loss_meter.value()[0];
