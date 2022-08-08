@@ -24,7 +24,6 @@ class ScalarNode :
   // these types can hold all types scalars FL support, w/o loss of precision
   using ScalarType = std::variant<long long, double, unsigned long long>;
 
-  const Shape shape_;
   const dtype dtype_;
   const ScalarType scalar_; // value used for initialization
 
@@ -36,7 +35,7 @@ class ScalarNode :
 
   template <typename T>
   static std::shared_ptr<ScalarNode> create(
-      const Shape& shape,
+      Shape&& shape,
       const dtype type,
       const T scalar) {
     switch (type) {
@@ -46,22 +45,27 @@ class ScalarNode :
       case dtype::s64:
       case dtype::u8:
       case dtype::u16:
-      case dtype::u32:
+      case dtype::u32: {
+        auto castedScalar = static_cast<long long>(scalar);
         return std::make_shared<ScalarNode>(
-            PrivateHelper{}, shape, type, static_cast<long long>(scalar));
-      case dtype::u64:
+            PrivateHelper{}, std::move(shape), type, castedScalar);
+      }
+      case dtype::u64: {
+        auto castedScalar = static_cast<unsigned long long>(scalar);
         return std::make_shared<ScalarNode>(
-            PrivateHelper{}, shape, type, static_cast<unsigned long long>(scalar));
+            PrivateHelper{}, std::move(shape), type, castedScalar);
+      }
       case dtype::f16:
       case dtype::f32:
       case dtype::f64:
+        auto castedScalar = static_cast<double>(scalar);
         return std::make_shared<ScalarNode>(
-            PrivateHelper{}, shape, type, static_cast<double>(scalar));
+            PrivateHelper{}, std::move(shape), type, castedScalar);
     }
     throw std::runtime_error("Unknown dtype");
   }
 
-  const Shape& shape() const;
+  // metadata
   dtype dataType() const;
 
   // cast to T
@@ -85,7 +89,7 @@ class ScalarNode :
   // intentionally kept unusable publicly
   ScalarNode(
       const PrivateHelper&,
-      const Shape& shape,
+      Shape&& shape,
       const dtype type,
       const ScalarType scalar);
 };

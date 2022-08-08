@@ -88,9 +88,7 @@ bool isOpFusable(const BinaryOp op) {
 }
 
 bool isNodeFusable(const BinaryNode& node) {
-  // TODO consider
-  // 1. shape inference to check shapes, else need to handle broadcast.
-  // 2. whether casting fits into this, do we need type inference?
+  // TODO consider whether casting fits into this, do we need type inference?
   return isOpFusable(node.op());
 }
 
@@ -268,7 +266,6 @@ std::shared_ptr<Node> BinaryOpFuser::fuseAccumulatedBinops(
     const Tensor* lhs = &inputs[0];
     const Tensor* rhs = &inputs[1];
     // TODO
-    // - can we expect shapes to be always compatible here with shape inference?
     // - support same-ndim broadcast (if we force OneDNN Tensor to always have
     //   same # of internal dims, like ArrayFire, we can easily support general
     //   broadcast)
@@ -327,7 +324,10 @@ std::shared_ptr<Node> BinaryOpFuser::fuseAccumulatedBinops(
   };
 
   return CustomNode::create(
-      "OneDnnFusedBinaryOp", std::move(inputNodes), std::move(evalFunc));
+      "OneDnnFusedBinaryOp",
+      std::move(inputNodes),
+      Shape(node->shape()),
+      std::move(evalFunc));
 }
 
 std::shared_ptr<Node> BinaryOpFuser::apply(std::shared_ptr<Node> root) {

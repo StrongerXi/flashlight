@@ -56,7 +56,7 @@ TensorBackendType JitTensorBase::backendType() const {
 }
 
 const Shape& JitTensorBase::shape() {
-  FL_JIT_TENSOR_UNIMPLEMENTED;
+  return node()->shape();
 }
 
 fl::dtype JitTensorBase::type() {

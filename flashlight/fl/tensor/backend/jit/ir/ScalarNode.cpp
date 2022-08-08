@@ -11,14 +11,10 @@ namespace fl {
 
 ScalarNode::ScalarNode(
     const PrivateHelper&,
-    const Shape& shape,
+    Shape&& shape,
     const fl::dtype type,
     const ScalarType scalar)
-    : NodeTrait({}), shape_(shape), dtype_(type), scalar_(scalar) {}
-
-const Shape& ScalarNode::shape() const {
-  return shape_;
-}
+    : NodeTrait({}, std::move(shape)), dtype_(type), scalar_(scalar) {}
 
 dtype ScalarNode::dataType() const {
   return dtype_;
@@ -26,7 +22,8 @@ dtype ScalarNode::dataType() const {
 
 std::shared_ptr<Node> ScalarNode::mapInputs(
     std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)>&& /* func */) {
-  return std::make_shared<ScalarNode>(PrivateHelper{}, shape_, dtype_, scalar_);
+  return std::make_shared<ScalarNode>(
+      PrivateHelper{}, Shape(shape()), dtype_, scalar_);
 }
 
 } // namespace fl

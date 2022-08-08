@@ -9,7 +9,8 @@
 
 namespace fl {
 
-ValueNode::ValueNode(const PrivateHelper&, Tensor&& value) : NodeTrait({}) {
+ValueNode::ValueNode(const PrivateHelper&, Tensor&& value)
+  : NodeTrait({}, Shape(value.shape())) {
   setResult(std::move(value));
 }
 

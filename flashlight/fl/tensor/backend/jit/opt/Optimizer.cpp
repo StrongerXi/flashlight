@@ -36,38 +36,32 @@ std::shared_ptr<ScalarNode> foldScalarNodes(
     const ScalarNode& lhs,
     const ScalarNode& rhs,
     const BinaryOp op,
-    const Shape& shape,
     const dtype type) {
   T lhsVal = lhs.scalar<T>();
   T rhsVal = rhs.scalar<T>();
   T resVal = foldScalars(lhsVal, rhsVal, op);
-  return ScalarNode::create(Shape(shape), type, resVal);
+  return ScalarNode::create(Shape(lhs.shape()), type, resVal);
 }
 
 std::shared_ptr<ScalarNode> foldScalarNodes(
     const ScalarNode& lhs,
     const ScalarNode& rhs,
     const BinaryOp op,
-    const Shape& shape,
     const dtype type) {
   switch (type) {
     case dtype::f16:
       throw std::runtime_error("[foldScalarNodes] f16 is unsupported");
-    case dtype::f32: return foldScalarNodes<float>(lhs, rhs, op, shape, type);
-    case dtype::f64: return foldScalarNodes<double>(lhs, rhs, op, shape, type);
-    case dtype::b8: return foldScalarNodes<char>(lhs, rhs, op, shape, type);
-    case dtype::s16: return foldScalarNodes<short>(lhs, rhs, op, shape, type);
-    case dtype::s32: return foldScalarNodes<int>(lhs, rhs, op, shape, type);
-    case dtype::s64:
-      return foldScalarNodes<long long>(lhs, rhs, op, shape, type);
-    case dtype::u8:
-      return foldScalarNodes<unsigned char>(lhs, rhs, op, shape, type);
-    case dtype::u16:
-      return foldScalarNodes<unsigned short>(lhs, rhs, op, shape, type);
-    case dtype::u32:
-      return foldScalarNodes<unsigned int>(lhs, rhs, op, shape, type);
+    case dtype::f32: return foldScalarNodes<float>(lhs, rhs, op, type);
+    case dtype::f64: return foldScalarNodes<double>(lhs, rhs, op, type);
+    case dtype::b8: return foldScalarNodes<char>(lhs, rhs, op, type);
+    case dtype::s16: return foldScalarNodes<short>(lhs, rhs, op, type);
+    case dtype::s32: return foldScalarNodes<int>(lhs, rhs, op, type);
+    case dtype::s64: return foldScalarNodes<long long>(lhs, rhs, op, type);
+    case dtype::u8: return foldScalarNodes<unsigned char>(lhs, rhs, op, type);
+    case dtype::u16: return foldScalarNodes<unsigned short>(lhs, rhs, op, type);
+    case dtype::u32: return foldScalarNodes<unsigned int>(lhs, rhs, op, type);
     case dtype::u64:
-      return foldScalarNodes<unsigned long long>(lhs, rhs, op, shape, type);
+      return foldScalarNodes<unsigned long long>(lhs, rhs, op, type);
   }
   throw std::runtime_error("Unknown data type");
 }
@@ -89,7 +83,7 @@ std::shared_ptr<Node> foldScalarsInBinaryNode(std::shared_ptr<Node> node) {
     const auto& shape = lhsScalar.shape();
     const auto dtype = lhsScalar.dataType();
     if (shape == rhsScalar.shape() && dtype == rhsScalar.dataType()) {
-      return foldScalarNodes(lhsScalar, rhsScalar, binop, shape, dtype);
+      return foldScalarNodes(lhsScalar, rhsScalar, binop, dtype);
     }
   }
   // Failed to fold `node`, but if folding happened in either input,

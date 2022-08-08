@@ -35,6 +35,7 @@ class CustomNode : public NodeTrait<CustomNode> {
   static std::shared_ptr<CustomNode> create(
       std::string&& debugName,
       std::vector<std::shared_ptr<Node>>&& inputs,
+      Shape&& shape,
       EvalFunc&& evalFunc);
 
   const std::string& debugName() const;
@@ -49,6 +50,7 @@ class CustomNode : public NodeTrait<CustomNode> {
       const PrivateHelper&,
       std::string&& debugName,
       std::vector<std::shared_ptr<Node>>&& inputs,
+      Shape&& shape,
       EvalFunc&& evalFunc);
 };
 

@@ -49,6 +49,7 @@ namespace fl {
  */
 class Node {
   const std::vector<std::shared_ptr<Node>> inputs_;
+  const Shape shape_;
   unsigned useCount_{0};
 
   // present if this node has been evaluated
@@ -57,7 +58,7 @@ class Node {
   void nodeImplTypeCheck(NodeType expect, NodeType actual) const;
 
  protected:
-  Node(std::vector<std::shared_ptr<Node>>&& inputs);
+  Node(std::vector<std::shared_ptr<Node>>&& inputs, Shape&& shape);
 
   // Limiting input get/set API to help enforce internal consistency.
   std::shared_ptr<Node> getInput(unsigned idx) const;
@@ -65,8 +66,9 @@ class Node {
  public:
   virtual ~Node();
 
-  // Inputs
+  // Metadata
   const std::vector<std::shared_ptr<Node>>& inputs() const;
+  const Shape& shape() const;
 
   // immutable input update
   virtual std::shared_ptr<Node> mapInputs(
@@ -118,8 +120,8 @@ class Node {
 template <typename Derived>
 class NodeTrait : public Node {
  public:
-  NodeTrait(std::vector<std::shared_ptr<Node>>&& inputs)
-    : Node(std::move(inputs)) {}
+  NodeTrait(std::vector<std::shared_ptr<Node>>&& inputs, Shape&& shape)
+    : Node(std::move(inputs), std::move(shape)) {}
 
   NodeType type() const override {
     return Derived::nodeType;

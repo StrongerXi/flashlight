@@ -6,6 +6,7 @@
  */
 
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
+#include <stdexcept>
 
 namespace fl {
 
@@ -20,7 +21,14 @@ BinaryNode::BinaryNode(
     const PrivateHelper&,
     std::shared_ptr<Node> lhs,
     std::shared_ptr<Node> rhs,
-    BinaryOp op) : NodeTrait({ lhs, rhs }), op_(op) {}
+    BinaryOp op) : NodeTrait({ lhs, rhs }, Shape(lhs->shape())), op_(op) {
+  // TODO resolve broadcast shape
+  if (lhs->shape() != rhs->shape()) {
+    throw std::runtime_error(
+        "[BinaryNode::BinaryNode] Shape inference doesn't support broadcast yet"
+    );
+  }
+}
 
 BinaryOp BinaryNode::op() const {
   return op_;

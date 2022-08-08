@@ -22,7 +22,8 @@ void Node::nodeImplTypeCheck(NodeType expect, NodeType actual) const {
   }
 }
 
-Node::Node(std::vector<std::shared_ptr<Node>>&& inputs) : inputs_(inputs) {
+Node::Node(std::vector<std::shared_ptr<Node>>&& inputs, Shape&& shape)
+  : inputs_(inputs), shape_(shape) {
   for (const auto& input : inputs) {
     input->incUseCount();
   }
@@ -40,6 +41,10 @@ std::shared_ptr<Node> Node::getInput(unsigned idx) const {
 
 const std::vector<std::shared_ptr<Node>>& Node::inputs() const {
   return inputs_;
+}
+
+const Shape& Node::shape() const {
+  return shape_;
 }
 
 const std::optional<Tensor>& Node::getResult() const {

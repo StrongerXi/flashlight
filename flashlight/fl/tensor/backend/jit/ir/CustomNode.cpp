@@ -14,19 +14,22 @@ CustomNode::CustomNode(
     const PrivateHelper&,
     std::string&& debugName,
     std::vector<std::shared_ptr<Node>>&& inputs,
+    Shape&& shape,
     EvalFunc&& evalFunc)
-    : NodeTrait(std::move(inputs)),
+    : NodeTrait(std::move(inputs), std::move(shape)),
     debugName_(debugName), evalFunc_(std::move(evalFunc)) {}
 
 
 std::shared_ptr<CustomNode> CustomNode::create(
     std::string&& debugName,
     std::vector<std::shared_ptr<Node>>&& inputs,
+    Shape&& shape,
     EvalFunc&& evalFunc) {
   return std::make_shared<CustomNode>(
           PrivateHelper{},
           std::move(debugName),
           std::move(inputs),
+          std::move(shape),
           std::move(evalFunc));
 }
 
@@ -45,7 +48,10 @@ std::shared_ptr<Node> CustomNode::mapInputs(
       newInputs.emplace_back(func(oldInput));
   }
   return create(
-      std::string(debugName_), std::move(newInputs), EvalFunc(evalFunc_));
+      std::string(debugName_),
+      std::move(newInputs),
+      Shape(shape()),
+      EvalFunc(evalFunc_));
 }
 
 } // namespace fl
