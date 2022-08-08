@@ -62,7 +62,7 @@ Index canonicalizeIndex(const Index& idx, const Dim axisDim) {
       return axisDim;
     }
     const auto dim = optDim.value();
-    if (dim < -axisDim || axisDim <= dim) {
+    if (dim < -axisDim || axisDim < dim) {
       std::ostringstream oss;
       oss << "[canonicalizeIndexByShape] dim out of range: dim = " << dim
           << ", axisDim = " << axisDim;
@@ -88,7 +88,14 @@ Index canonicalizeIndex(const Index& idx, const Dim axisDim) {
       return range(canonicalizeDim(start), canonicalizeDim(end), stride);
     }
     case detail::IndexType::Literal: {
-      return canonicalizeDim(idx.get<Dim>());
+      auto literal = canonicalizeDim(idx.get<Dim>());
+      if (literal > axisDim) {
+      std::ostringstream oss;
+      oss << "[canonicalizeIndexByShape] literal index too large: literal = "
+          << literal << ", axisDim = " << axisDim;
+        throw std::invalid_argument(oss.str());
+      }
+      return literal;
     }
     case detail::IndexType::Span: {
       return idx;
