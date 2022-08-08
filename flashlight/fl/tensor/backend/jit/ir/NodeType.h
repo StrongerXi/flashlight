@@ -20,6 +20,7 @@ enum class NodeType {
   Scalar,
   Value,
   Index,
+  IndexedMerge,
 };
 
 /**

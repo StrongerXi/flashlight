@@ -141,10 +141,10 @@ unsigned propogateProfitableFuseChainLengths(
     case NodeType::Custom:
     // TODO go crazy and optimize the tensor indices
     case NodeType::Index:
+    case NodeType::IndexedMerge:
     case NodeType::Scalar:
     case NodeType::Value: {
        // chain stops at these nodes (they are leaf data)
-       // TODO go crazy and optimize the tensor indices
        for (const auto& inputNode : node->inputs()) {
          propogateProfitableFuseChainLengths(inputNode, lengthMap);
        }

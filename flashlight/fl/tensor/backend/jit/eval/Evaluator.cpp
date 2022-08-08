@@ -35,16 +35,29 @@ const Tensor Evaluator::evalCustomNode(CustomNode& node) {
 }
 
 const Tensor Evaluator::evalIndexNode(IndexNode& node) {
-  std::vector<Index> indices;
-  for (const auto& index : node.indices()) {
+  return getTensorOrEvalNode(node.indexedNode())(evalIndices(node.indices()));
+}
+
+const Tensor Evaluator::evalIndexedMergeNode(IndexedMergeNode& node) {
+  // TODO no need to copy if indexedNode has only 1 user here
+  const auto indexedTensor = getTensorOrEvalNode(node.indexedNode()).copy();
+  const auto evaluatedIndices = evalIndices(node.indices());
+  const auto mergeSourceTensor = getTensorOrEvalNode(node.mergeSourceNode());
+  indexedTensor(evaluatedIndices) = mergeSourceTensor;
+  return indexedTensor;
+}
+
+std::vector<Index> Evaluator::evalIndices(const std::vector<Index>& indices) {
+  std::vector<Index> evaluatedIndices;
+  for (const auto& index : indices) {
     if (index.type() == detail::IndexType::Tensor) {
       const auto tensorIndexNode = toJitTensorBase(index.get<Tensor>()).node();
-      indices.push_back(getTensorOrEvalNode(tensorIndexNode));
+      evaluatedIndices.push_back(getTensorOrEvalNode(tensorIndexNode));
     } else {
-      indices.push_back(index);
+      evaluatedIndices.push_back(index);
     }
   }
-  return getTensorOrEvalNode(node.indexedNode())(indices);
+  return evaluatedIndices;
 }
 
 const Tensor Evaluator::evalScalarNode(ScalarNode& node) {
@@ -84,6 +97,8 @@ const Tensor Evaluator::getTensorOrEvalNode(std::shared_ptr<Node> node) {
       case NodeType::Binary: return evalBinaryNode(node->impl<BinaryNode>());
       case NodeType::Custom: return evalCustomNode(node->impl<CustomNode>());
       case NodeType::Index: return evalIndexNode(node->impl<IndexNode>());
+      case NodeType::IndexedMerge:
+          return evalIndexedMergeNode(node->impl<IndexedMergeNode>());
       case NodeType::Scalar: return evalScalarNode(node->impl<ScalarNode>());
       case NodeType::Value:
         // read-only shallow copy

@@ -18,6 +18,7 @@ std::string nodeTypeToString(const NodeType type) {
     case NodeType::Scalar: return "Scalar";
     case NodeType::Value: return "Value";
     case NodeType::Index: return "Index";
+    case NodeType::IndexedMerge: return "IndexedMerge";
   }
   throw std::runtime_error("Unknown node type");
 }

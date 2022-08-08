@@ -104,6 +104,7 @@ std::shared_ptr<Node> foldScalars(std::shared_ptr<Node> node) {
   switch (node->type()) {
     case NodeType::Binary: return foldScalarsInBinaryNode(node);
     case NodeType::Index:
+    case NodeType::IndexedMerge:
     case NodeType::Custom:
     case NodeType::Scalar:
     case NodeType::Value:
