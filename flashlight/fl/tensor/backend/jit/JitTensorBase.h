@@ -135,7 +135,10 @@ class JitTensorBase : public TensorAdapterBase {
   void replaceDataNode(std::shared_ptr<Node> newNode);
 
   // return the wrapped tensor, not a JitTensorBase
+  // `const` w.r.t. the underlying Tensor this represents.
   const Tensor& getTensorOrEvalNode();
+
+  Tensor fromNode(std::shared_ptr<Node> node) const;
 
  protected:
   // this allows us to create an instance of derived class
