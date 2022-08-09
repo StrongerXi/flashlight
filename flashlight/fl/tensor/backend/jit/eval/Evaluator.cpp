@@ -100,6 +100,18 @@ Evaluator::evalBinaryOp(BinaryOp op, const Tensor& lhs, const Tensor& rhs) {
       return backend_.mul(lhs, rhs);
     case BinaryOp::Div:
       return backend_.div(lhs, rhs);
+    case BinaryOp::Eq:
+      return backend_.eq(lhs, rhs);
+    case BinaryOp::Neq:
+      return backend_.neq(lhs, rhs);
+    case BinaryOp::Gt:
+      return backend_.greaterThan(lhs, rhs);
+    case BinaryOp::Gte:
+      return backend_.greaterThanEqual(lhs, rhs);
+    case BinaryOp::Lt:
+      return backend_.lessThan(lhs, rhs);
+    case BinaryOp::Lte:
+      return backend_.lessThanEqual(lhs, rhs);
   }
   throw std::runtime_error(
       "[Evaluator::evalBinaryOp] Unknown binary operation type");

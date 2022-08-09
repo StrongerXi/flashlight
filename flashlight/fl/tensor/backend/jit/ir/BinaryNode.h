@@ -14,7 +14,7 @@ namespace fl {
 /**
  * Types of binary operations.
  */
-enum class BinaryOp { Add, Sub, Mul, Div };
+enum class BinaryOp { Add, Sub, Mul, Div, Eq, Neq, Gt, Gte, Lt, Lte };
 
 /**
  * A node that represents binary operations.

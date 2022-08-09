@@ -76,6 +76,18 @@ dnnl::algorithm binopToOneDnnAlg(const BinaryOp op) {
       return dnnl::algorithm::binary_mul;
     case BinaryOp::Div:
       return dnnl::algorithm::binary_div;
+    case BinaryOp::Eq:
+      return dnnl::algorithm::binary_eq;
+    case BinaryOp::Neq:
+      return dnnl::algorithm::binary_ne;
+    case BinaryOp::Gt:
+      return dnnl::algorithm::binary_gt;
+    case BinaryOp::Gte:
+      return dnnl::algorithm::binary_ge;
+    case BinaryOp::Lt:
+      return dnnl::algorithm::binary_lt;
+    case BinaryOp::Lte:
+      return dnnl::algorithm::binary_le;
   }
   throw std::runtime_error("Unsupported binary operation type");
 }
@@ -86,6 +98,12 @@ bool isOpFusable(const BinaryOp op) {
     case BinaryOp::Mul:
     case BinaryOp::Sub:
     case BinaryOp::Div:
+    case BinaryOp::Eq:
+    case BinaryOp::Neq:
+    case BinaryOp::Gt:
+    case BinaryOp::Gte:
+    case BinaryOp::Lt:
+    case BinaryOp::Lte:
       return true;
   }
   throw std::runtime_error("Unsupported binary operation type");

@@ -341,12 +341,6 @@ Tensor JitBackend::argsort(
   }                                                                           \
   FL_JIT_BINARY_OP_LITERALS_DEF_STUB(FUNC, OP);
 
-FL_JIT_BINARY_OP_DEF_STUB(==, eq);
-FL_JIT_BINARY_OP_DEF_STUB(!=, neq);
-FL_JIT_BINARY_OP_DEF_STUB(<, lessThan);
-FL_JIT_BINARY_OP_DEF_STUB(<=, lessThanEqual);
-FL_JIT_BINARY_OP_DEF_STUB(>, greaterThan);
-FL_JIT_BINARY_OP_DEF_STUB(>=, greaterThanEqual);
 FL_JIT_BINARY_OP_DEF_STUB(||, logicalOr);
 FL_JIT_BINARY_OP_DEF_STUB(&&, logicalAnd);
 FL_JIT_BINARY_OP_DEF_STUB(%, mod);
@@ -396,6 +390,12 @@ FL_JIT_BINARY_OP_TENSOR_DEF(add, BinaryOp::Add);
 FL_JIT_BINARY_OP_TENSOR_DEF(sub, BinaryOp::Sub);
 FL_JIT_BINARY_OP_TENSOR_DEF(mul, BinaryOp::Mul);
 FL_JIT_BINARY_OP_TENSOR_DEF(div, BinaryOp::Div);
+FL_JIT_BINARY_OP_TENSOR_DEF(eq, BinaryOp::Eq);
+FL_JIT_BINARY_OP_TENSOR_DEF(neq, BinaryOp::Neq);
+FL_JIT_BINARY_OP_TENSOR_DEF(lessThan, BinaryOp::Lt);
+FL_JIT_BINARY_OP_TENSOR_DEF(lessThanEqual, BinaryOp::Lte);
+FL_JIT_BINARY_OP_TENSOR_DEF(greaterThan, BinaryOp::Gt);
+FL_JIT_BINARY_OP_TENSOR_DEF(greaterThanEqual, BinaryOp::Gte);
 #undef FL_JIT_BINARY_OP_TYPE_DEF
 #undef FL_JIT_BINARY_OP_LITERALS_DEF
 #undef FL_JIT_BINARY_OP_TENSOR_DEF
