@@ -28,6 +28,12 @@ T foldScalars(const T lhs, const T rhs, const BinaryOp op) {
     case BinaryOp::Sub: return lhs - rhs;
     case BinaryOp::Mul: return lhs * rhs;
     case BinaryOp::Div: return lhs / rhs;
+    case BinaryOp::Eq: return lhs == rhs;
+    case BinaryOp::Neq: return lhs != rhs;
+    case BinaryOp::Gt: return lhs >= rhs;
+    case BinaryOp::Gte: return lhs >= rhs;
+    case BinaryOp::Lt: return lhs < rhs;
+    case BinaryOp::Lte: return lhs <= rhs;
   }
   throw std::runtime_error("Unknown binary operation type");
 }

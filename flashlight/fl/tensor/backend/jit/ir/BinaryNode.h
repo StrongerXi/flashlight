@@ -18,7 +18,13 @@ enum class BinaryOp {
   Add,
   Sub,
   Mul,
-  Div
+  Div,
+  Eq,
+  Neq,
+  Gt,
+  Gte,
+  Lt,
+  Lte,
 };
 
 /**

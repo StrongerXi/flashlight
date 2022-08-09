@@ -61,6 +61,12 @@ dnnl::algorithm binopToOneDnnAlg(const BinaryOp op) {
     case BinaryOp::Sub: return dnnl::algorithm::binary_sub;
     case BinaryOp::Mul: return dnnl::algorithm::binary_mul;
     case BinaryOp::Div: return dnnl::algorithm::binary_div;
+    case BinaryOp::Eq: return dnnl::algorithm::binary_eq;
+    case BinaryOp::Neq: return dnnl::algorithm::binary_ne;
+    case BinaryOp::Gt: return dnnl::algorithm::binary_gt;
+    case BinaryOp::Gte: return dnnl::algorithm::binary_ge;
+    case BinaryOp::Lt: return dnnl::algorithm::binary_lt;
+    case BinaryOp::Lte: return dnnl::algorithm::binary_le;
   }
   throw std::runtime_error("Unsupported binary operation type");
 }
@@ -69,9 +75,15 @@ bool isOpCommutative(const BinaryOp op) {
   switch(op) {
     case BinaryOp::Add:
     case BinaryOp::Mul:
+    case BinaryOp::Eq:
+    case BinaryOp::Neq:
       return true;
     case BinaryOp::Sub:
     case BinaryOp::Div:
+    case BinaryOp::Gt:
+    case BinaryOp::Gte:
+    case BinaryOp::Lt:
+    case BinaryOp::Lte:
       return false;
   }
   throw std::runtime_error("Unsupported binary operation type");
@@ -83,6 +95,12 @@ bool isOpFusable(const BinaryOp op) {
     case BinaryOp::Mul:
     case BinaryOp::Sub:
     case BinaryOp::Div:
+    case BinaryOp::Eq:
+    case BinaryOp::Neq:
+    case BinaryOp::Gt:
+    case BinaryOp::Gte:
+    case BinaryOp::Lt:
+    case BinaryOp::Lte:
       return true;
   }
   throw std::runtime_error("Unsupported binary operation type");
