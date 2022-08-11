@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "flashlight/fl/tensor/TensorBackend.h"
 #include "flashlight/fl/tensor/TensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
@@ -24,7 +26,13 @@ namespace fl {
 class Evaluator {
   // backend used for dispatching Tensor ops.
   TensorBackend& backend_;
+  // track time spent on executing a node alone (not its inputs)
+  std::unordered_map<const Node*, float> nodeToTotTimeMs_{};
 
+  template <typename T>
+  T profile(std::function<T()> func, const Node* nodePtr);
+
+  const Tensor evalBinaryOp(const Tensor& lhs, const Tensor& rhs, BinaryOp op);
   const Tensor evalBinaryNode(BinaryNode& node);
   const Tensor evalCustomNode(CustomNode& node);
   const Tensor evalIndexNode(IndexNode& node);

@@ -7,6 +7,9 @@
 
 #include "flashlight/fl/tensor/backend/jit/eval/Evaluator.h"
 
+#include <chrono>
+#include <functional>
+
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
 
@@ -14,10 +17,21 @@ namespace fl {
 
 Evaluator::Evaluator(TensorBackend& backend) : backend_(backend) {}
 
-const Tensor Evaluator::evalBinaryNode(BinaryNode& node) {
-  const auto lhs = getTensorOrEvalNode(node.lhs());
-  const auto rhs = getTensorOrEvalNode(node.rhs());
-  switch(node.op()) {
+template <typename T>
+T Evaluator::profile(std::function<T()> func, const Node* nodePtr) {
+  const auto start = std::chrono::high_resolution_clock::now();
+  auto res = func();
+  const auto end = std::chrono::high_resolution_clock::now();
+  const auto durNs =
+    std::chrono::duration_cast<std::chrono::duration<float>>(end -
+        start).count();
+  nodeToTotTimeMs_.insert({nodePtr, durNs * 1000});
+  return res;
+}
+
+const Tensor Evaluator::evalBinaryOp(
+    const Tensor& lhs, const Tensor& rhs, BinaryOp op) {
+  switch(op) {
     case BinaryOp::Add: return backend_.add(lhs, rhs);
     case BinaryOp::Sub: return backend_.sub(lhs, rhs);
     case BinaryOp::Mul: return backend_.mul(lhs, rhs);
@@ -32,25 +46,47 @@ const Tensor Evaluator::evalBinaryNode(BinaryNode& node) {
   throw std::runtime_error("Unknown binary operation type");
 }
 
+const Tensor Evaluator::evalBinaryNode(BinaryNode& node) {
+  const auto lhs = getTensorOrEvalNode(node.lhs());
+  const auto rhs = getTensorOrEvalNode(node.rhs());
+  std::function<const Tensor()> func = [&]() {
+    return evalBinaryOp(lhs, rhs, node.op());
+  };
+  return profile(func, &node);
+}
+
 const Tensor Evaluator::evalCustomNode(CustomNode& node) {
   std::vector<Tensor> inputTensors;
   for (auto& inputNode : node.inputs()) {
     inputTensors.emplace_back(getTensorOrEvalNode(inputNode));
   }
-  return node.evalFunc()(inputTensors);
+  std::function<const Tensor()> func = [&]() {
+    return node.evalFunc()(inputTensors);
+  };
+  return profile(func, &node);
 }
 
 const Tensor Evaluator::evalIndexNode(IndexNode& node) {
-  return getTensorOrEvalNode(node.indexedNode())(evalIndices(node.indices()));
+  const auto indexedTensor = getTensorOrEvalNode(node.indexedNode());
+  std::function<const Tensor()> func = [&]() {
+    // NOTE we count indices evaluation too because it's not in the graph
+    const auto evaluatedIndices = evalIndices(node.indices());
+    return indexedTensor(evaluatedIndices);
+  };
+  return profile(func, &node);
 }
 
 const Tensor Evaluator::evalIndexedMergeNode(IndexedMergeNode& node) {
   // TODO no need to copy if indexedNode has only 1 user here
   const auto indexedTensor = getTensorOrEvalNode(node.indexedNode()).copy();
-  const auto evaluatedIndices = evalIndices(node.indices());
   const auto mergeSourceTensor = getTensorOrEvalNode(node.mergeSourceNode());
-  indexedTensor(evaluatedIndices) = mergeSourceTensor;
-  return indexedTensor;
+  std::function<const Tensor()> func = [&]() {
+    // NOTE we count indices evaluation too because it's not in the graph
+    const auto evaluatedIndices = evalIndices(node.indices());
+    indexedTensor(evaluatedIndices) = mergeSourceTensor;
+    return indexedTensor;
+  };
+  return profile(func, &node);
 }
 
 std::vector<Index> Evaluator::evalIndices(const std::vector<Index>& indices) {
@@ -67,34 +103,37 @@ std::vector<Index> Evaluator::evalIndices(const std::vector<Index>& indices) {
 }
 
 const Tensor Evaluator::evalScalarNode(ScalarNode& node) {
-  const Shape& shape = node.shape();
-  const auto dtype = node.dataType();
-  switch (dtype) {
-    case dtype::f16:
-      throw std::invalid_argument(
-          "[JitTensor::evalScalarNode] dtype::f16 not supported");
-    case dtype::f32:
-      return backend_.full(shape, node.scalar<float>(), dtype);
-    case dtype::f64:
-      return backend_.full(shape, node.scalar<double>(), dtype);
-    case dtype::b8:
-      return backend_.full(shape, node.scalar<char>(), dtype);
-    case dtype::s16:
-      return backend_.full(shape, node.scalar<short>(), dtype);
-    case dtype::s32:
-      return backend_.full(shape, node.scalar<int>(), dtype);
-    case dtype::s64:
-      return backend_.full(shape, node.scalar<long long>(), dtype);
-    case dtype::u8:
-      return backend_.full(shape, node.scalar<unsigned char>(), dtype);
-    case dtype::u16:
-      return backend_.full(shape, node.scalar<unsigned short>(), dtype);
-    case dtype::u32:
-      return backend_.full(shape, node.scalar<unsigned int>(), dtype);
-    case dtype::u64:
-      return backend_.full(shape, node.scalar<unsigned long long>(), dtype);
-  }
-  throw std::runtime_error("Unknown dtype");
+  std::function<const Tensor()> func = [&]() {
+    const Shape& shape = node.shape();
+    const auto dtype = node.dataType();
+    switch (dtype) {
+      case dtype::f16:
+        throw std::invalid_argument(
+            "[JitTensor::evalScalarNode] dtype::f16 not supported");
+      case dtype::f32:
+        return backend_.full(shape, node.scalar<float>(), dtype);
+      case dtype::f64:
+        return backend_.full(shape, node.scalar<double>(), dtype);
+      case dtype::b8:
+        return backend_.full(shape, node.scalar<char>(), dtype);
+      case dtype::s16:
+        return backend_.full(shape, node.scalar<short>(), dtype);
+      case dtype::s32:
+        return backend_.full(shape, node.scalar<int>(), dtype);
+      case dtype::s64:
+        return backend_.full(shape, node.scalar<long long>(), dtype);
+      case dtype::u8:
+        return backend_.full(shape, node.scalar<unsigned char>(), dtype);
+      case dtype::u16:
+        return backend_.full(shape, node.scalar<unsigned short>(), dtype);
+      case dtype::u32:
+        return backend_.full(shape, node.scalar<unsigned int>(), dtype);
+      case dtype::u64:
+        return backend_.full(shape, node.scalar<unsigned long long>(), dtype);
+    }
+    throw std::runtime_error("Unknown dtype");
+  };
+  return profile(func, &node);
 }
 
 const Tensor Evaluator::getTensorOrEvalNode(std::shared_ptr<Node> node) {
