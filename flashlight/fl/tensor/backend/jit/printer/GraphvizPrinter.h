@@ -32,7 +32,13 @@ class GraphvizPrinter {
   };
 
  private:
+  // temporary state during public function call
   std::ostream* os_;
+  const std::unordered_map<Node*, float>* nodeToTotTimeMs_{};
+  float medianTotTime_ = 0;
+  float maxTotTime_ = 0;
+
+  // optionally persistent state
   Color edgeColor_ = Color::Black;
   unsigned subgraphNameCounter_{0};
   unsigned nodeNameCounter_{0};
@@ -46,18 +52,23 @@ class GraphvizPrinter {
   std::string generateFreshSubgraphName(const std::string& namePrefix);
   const std::string& getNodeName(Node* node) const;
 
-  void printBinaryNode(const BinaryNode& node);
-  void printCustomNode(const CustomNode& node);
-  void printIndexNode(const IndexNode& node);
-  void printIndexedMergeNode(const IndexedMergeNode& node);
+  void printBinaryNodeLabels(const BinaryNode& node);
+  void printCustomNodeLabels(const CustomNode& node);
+  void printIndexNodeLabels(const IndexNode& node);
+  void printIndexedMergeNodeLabels(const IndexedMergeNode& node);
   std::ostream& printIndices(const std::vector<Index>& indices);
   void printRangeIndex(const range& rangeIdx);
-  void printScalarNode(const ScalarNode& node);
+  void printScalarNodeLabels(const ScalarNode& node);
   std::ostream& printScalarValue(const ScalarNode& node);
-  void printValueNode(const ValueNode& node);
+  void printValueNodeLabels(const ValueNode& node);
   std::ostream& printNodes(Node* node);
+  std::ostream& printNodeLabels(Node* node);
+  std::ostream& printNodeColor(float tottime);
+  std::ostream& printRelativeColor(float tottime);
   std::ostream& printEdges(Node* node);
   std::ostream& printColor(const Color& color);
+
+  void printSubgraph(Node* node, const std::string& namePrefix);
 
 public:
   // no copy/move
@@ -79,6 +90,13 @@ public:
       Node* node,
       std::ostream& os,
       const std::string& namePrefix);
+
+  // color node with execution statistics
+  GraphvizPrinter& printSubgraph(
+      Node* node,
+      std::ostream& os,
+      const std::string& namePrefix,
+      const std::unordered_map<Node*, float>& nodeToTotTimeMs_);
 };
 
 } // namespace fl

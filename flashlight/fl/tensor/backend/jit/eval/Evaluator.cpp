@@ -7,6 +7,8 @@
 
 #include "flashlight/fl/tensor/backend/jit/eval/Evaluator.h"
 
+#include <chrono>
+#include <functional>
 #include <queue>
 
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
@@ -37,12 +39,25 @@ std::unordered_map<Node*, unsigned> getNodeToRefCountInTree(Node* root) {
 
 Evaluator::Evaluator(TensorBackend& backend) : backend_(backend) {}
 
+void Evaluator::profile(std::function<void()> func, Node* nodePtr) {
+  const auto start = std::chrono::high_resolution_clock::now();
+  func();
+  const auto end = std::chrono::high_resolution_clock::now();
+  const auto durNs =
+    std::chrono::duration_cast<std::chrono::duration<float>>(end -
+        start).count();
+  nodeToTotTimeMs_.insert({nodePtr, durNs * 1000});
+}
+
 void Evaluator::evalBinaryNode(BinaryNode& node) {
   evalNode(node.lhs());
   evalNode(node.rhs());
   const auto& lhs = node.lhs()->getResult().value();
   const auto& rhs = node.rhs()->getResult().value();
-  node.setResult(evalBinaryOp(node.op(), lhs, rhs));
+  std::function<void()> func = [&]() {
+    node.setResult(evalBinaryOp(node.op(), lhs, rhs));
+  };
+  profile(func, &node);
 }
 
 void Evaluator::evalCustomNode(CustomNode& node) {
@@ -51,24 +66,37 @@ void Evaluator::evalCustomNode(CustomNode& node) {
     evalNode(inputNode);
     inputTensors.push_back(&inputNode->getResult().value());
   }
-  node.setResult(node.evalFunc()(inputTensors));
+  std::function<void()> func = [&]() {
+    node.setResult(node.evalFunc()(inputTensors));
+  };
+  profile(func, &node);
 }
 
 void Evaluator::evalIndexNode(IndexNode& node) {
   evalNode(node.indexedNode());
   const auto& indexedTensor = node.indexedNode()->getResult().value();
-  node.setResult(indexedTensor(evalIndices(node.indices())));
+  std::function<void()> func = [&]() {
+    // NOTE we count indices evaluation too because they are not in the graph
+    // (tensor index is not an "input" to the IndexNode)
+    node.setResult(indexedTensor(evalIndices(node.indices())));
+  };
+  profile(func, &node);
 }
 
 void Evaluator::evalIndexedMergeNode(IndexedMergeNode& node) {
   evalNode(node.indexedNode());
   // TODO no need to copy if indexedNode has only 1 user here
   auto indexedTensor = node.indexedNode()->getResult().value().copy();
-  const auto evaluatedIndices = evalIndices(node.indices());
   evalNode(node.mergeSourceNode());
   const auto& mergeSourceTensor = node.mergeSourceNode()->getResult().value();
-  indexedTensor(evaluatedIndices) = mergeSourceTensor;
-  node.setResult(std::move(indexedTensor));
+  std::function<void()> func = [&]() {
+    // NOTE we count indices evaluation too because they are not in the graph
+    // (tensor index is not an "input" to the IndexNode)
+    const auto evaluatedIndices = evalIndices(node.indices());
+    indexedTensor(evaluatedIndices) = mergeSourceTensor;
+    node.setResult(std::move(indexedTensor));
+  };
+  profile(func, &node);
 }
 
 std::vector<Index> Evaluator::evalIndices(const std::vector<Index>& indices) {
@@ -86,7 +114,10 @@ std::vector<Index> Evaluator::evalIndices(const std::vector<Index>& indices) {
 }
 
 void Evaluator::evalScalarNode(ScalarNode& node) {
-  node.setResult(evalScalar(node));
+  std::function<void()> func = [&]() {
+    node.setResult(evalScalar(node));
+  };
+  profile(func, &node);
 }
 
 Tensor
@@ -176,6 +207,7 @@ void Evaluator::evalNode(Node* node) {
 void Evaluator::eval(Node* node) {
   nodeToResultUseCount_ = getNodeToRefCountInTree(node);
   evalNode(node);
+  nodeToTotTimeMs_.clear();
   nodeToResultUseCount_.clear();
 }
 

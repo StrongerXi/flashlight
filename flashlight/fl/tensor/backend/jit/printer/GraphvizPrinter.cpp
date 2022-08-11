@@ -7,6 +7,10 @@
 
 #include "flashlight/fl/tensor/backend/jit/printer/GraphvizPrinter.h"
 
+#include <cmath>
+#include <iomanip>
+#include <stdexcept>
+
 #include "flashlight/fl/tensor/Index.h"
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 
@@ -73,39 +77,33 @@ GraphvizPrinter& GraphvizPrinter::setEdgeColor(Color newColor) {
   return *this;
 }
 
-void GraphvizPrinter::printBinaryNode(const BinaryNode& node) {
-  os() << "label=\""
-       << "BinaryNode"
+void GraphvizPrinter::printBinaryNodeLabels(const BinaryNode& node) {
+  os() << "BinaryNode"
        << "\\n"
        << "op = " << binopToStr(node.op()) << "\\n"
-       << "shape = " << node.shape() << "\\n"
-       << "\"";
+       << "shape = " << node.shape() << "\\n";
 }
 
-void GraphvizPrinter::printCustomNode(const CustomNode& node) {
-  os() << "label=\"" << node.name() << "\\n"
-       << "shape = " << node.shape() << "\\n"
-       << "\"";
+void GraphvizPrinter::printCustomNodeLabels(const CustomNode& node) {
+  os() << node.name() << "\\n"
+       << "shape = " << node.shape() << "\\n";
 }
 
-void GraphvizPrinter::printIndexNode(const IndexNode& node) {
-  os() << "label=\""
-       << "IndexNode"
+void GraphvizPrinter::printIndexNodeLabels(const IndexNode& node) {
+  os() << "IndexNode"
        << "\\n"
        << "shape = " << node.shape() << "\\n"
        << "indices = ";
-  printIndices(node.indices()) << "\\n"
-                               << "\"";
+  printIndices(node.indices()) << "\\n";
 }
 
-void GraphvizPrinter::printIndexedMergeNode(const IndexedMergeNode& node) {
-  os() << "label=\""
-       << "IndexedMergeNode"
+void GraphvizPrinter::printIndexedMergeNodeLabels(
+    const IndexedMergeNode& node) {
+  os() << "IndexedMergeNode"
        << "\\n"
        << "shape = " << node.shape() << "\\n"
        << "indices = ";
-  printIndices(node.indices()) << "\\n"
-                               << "\"";
+  printIndices(node.indices()) << "\\n";
 }
 
 void GraphvizPrinter::printRangeIndex(const range& rangeIdx) {
@@ -182,23 +180,19 @@ std::ostream& GraphvizPrinter::printScalarValue(const ScalarNode& node) {
   return os();
 }
 
-void GraphvizPrinter::printScalarNode(const ScalarNode& node) {
-  os() << "label=\""
-       << "ScalarNode"
+void GraphvizPrinter::printScalarNodeLabels(const ScalarNode& node) {
+  os() << "ScalarNode"
        << "\\n"
        << "shape = " << node.shape() << "\\n"
        << "dtype = " << node.dataType() << "\\n"
        << "value = ";
-  printScalarValue(node) << "\\n"
-                         << "\"";
+  printScalarValue(node) << "\\n";
 }
 
-void GraphvizPrinter::printValueNode(const ValueNode& node) {
-  os() << "label=\""
-       << "ValueNode"
+void GraphvizPrinter::printValueNodeLabels(const ValueNode& node) {
+  os() << "ValueNode"
        << "\\n"
-       << "shape = " << node.shape() << "\\n"
-       << "\"";
+       << "shape = " << node.shape() << "\\n";
 }
 
 std::ostream& GraphvizPrinter::printNodes(Node* node) {
@@ -209,29 +203,85 @@ std::ostream& GraphvizPrinter::printNodes(Node* node) {
     for (const auto& input : node->inputs()) {
       printNodes(input);
     }
-    os() << "    " << getNodeName(node) << "  [";
-    switch (node->type()) {
-      case NodeType::Binary:
-        printBinaryNode(node->impl<BinaryNode>());
-        break;
-      case NodeType::Custom:
-        printCustomNode(node->impl<CustomNode>());
-        break;
-      case NodeType::Index:
-        printIndexNode(node->impl<IndexNode>());
-        break;
-      case NodeType::IndexedMerge:
-        printIndexedMergeNode(node->impl<IndexedMergeNode>());
-        break;
-      case NodeType::Scalar:
-        printScalarNode(node->impl<ScalarNode>());
-        break;
-      case NodeType::Value:
-        printValueNode(node->impl<ValueNode>());
-        break;
+    os() << "    " << getNodeName(node) << "  [label=\"";
+    printNodeLabels(node);
+    const auto iter = nodeToTotTimeMs_->find(node);
+    if (iter != nodeToTotTimeMs_->end()) {
+      const auto tottime = iter->second;
+      os() << "tottime = " << tottime << "ms"
+           << "\" ";
+      printNodeColor(tottime);
+    } else { // just end label string
+      os() << "\" ";
     }
     os() << "];" << std::endl;
   }
+  return os();
+}
+
+std::ostream& GraphvizPrinter::printNodeLabels(Node* node) {
+  switch (node->type()) {
+    case NodeType::Binary:
+      printBinaryNodeLabels(node->impl<BinaryNode>());
+      break;
+    case NodeType::Custom:
+      printCustomNodeLabels(node->impl<CustomNode>());
+      break;
+    case NodeType::Index:
+      printIndexNodeLabels(node->impl<IndexNode>());
+      break;
+    case NodeType::IndexedMerge:
+      printIndexedMergeNodeLabels(node->impl<IndexedMergeNode>());
+      break;
+    case NodeType::Scalar:
+      printScalarNodeLabels(node->impl<ScalarNode>());
+      break;
+    case NodeType::Value:
+      printValueNodeLabels(node->impl<ValueNode>());
+      break;
+    default:
+      throw std::runtime_error(
+          "[GraphvizPrinter::printNodeLabels] Unknown node type");
+  }
+  return os();
+}
+
+std::ostream& GraphvizPrinter::printNodeColor(float tottime) {
+  os() << " fillcolor=\"";
+  printRelativeColor(tottime) << "\""
+                              << " style=filled ";
+  return os();
+}
+
+std::ostream& GraphvizPrinter::printRelativeColor(float tottime) {
+  // RGB: (why median -- to avoid all red if all nodes have ~= tottime)
+  // max    = (255, 0, 0)     -- all read
+  // median = (255, 128, 128) -- in between
+  // 0      = (255, 255, 255) -- white
+  //
+  // i.e.,
+  // f(0) = 255, f(median) = 128, f(max) = 0
+  // We want to differentiate the hotspot more,
+  // so f(x) = a(x - b)^2, and we don't try to fit f(0) = 255 -- we just
+  // truncate to 255 if result overflows.
+  //
+  // --> f(max) = a(max - b)^2 = 0
+  // Thus b = max
+  //
+  // --> f(median) = a(median - max)^2 = 128
+  // Thus a = 128/(max - median)^2
+  //
+  // TODO cache (a, b) instead?
+  const auto a = 128 / std::pow(maxTotTime_ - medianTotTime_, 2);
+  const auto b = maxTotTime_;
+  const auto res = std::min(255., a * std::pow(tottime - b, 2));
+  const auto normalizedIntensity = static_cast<int>(res);
+  std::ios state(NULL);
+  state.copyfmt(os());
+  os() << "#" << std::hex << 255 << std::setfill('0') << std::setw(2)
+       << normalizedIntensity << std::setfill('0') << std::setw(2)
+       << normalizedIntensity;
+  os().copyfmt(state);
   return os();
 }
 
@@ -244,7 +294,7 @@ std::ostream& GraphvizPrinter::printEdges(Node* node) {
       printEdges(input);
     }
     for (const auto& input : node->inputs()) {
-      os() << "    " << getNodeName(node) << " -> " << getNodeName(input)
+      os() << "    " << getNodeName(input) << " -> " << getNodeName(node)
            << " ["
            << "color=\"";
       printColor(edgeColor_) << "\""
@@ -266,17 +316,42 @@ std::ostream& GraphvizPrinter::printColor(const Color& color) {
   throw std::runtime_error("[GraphvizPrinter::printColor] unknown color");
 }
 
+void GraphvizPrinter::printSubgraph(Node* node, const std::string& namePrefix) {
+  // "cluster_" prefix enables bounding box around subgraph, yep.
+  os() << "subgraph cluster_" << generateFreshSubgraphName(namePrefix) << " {"
+       << std::endl
+       << std::endl;
+  printNodes(node) << std::endl;
+  printEdges(node) << std::endl;
+  os() << "}" << std::endl << std::endl;
+}
+
 GraphvizPrinter& GraphvizPrinter::printSubgraph(
     Node* node,
     std::ostream& os,
     const std::string& namePrefix) {
-  this->os_ = &os; // oh boy
-  os << "subgraph " << generateFreshSubgraphName(namePrefix) << " {"
-     << std::endl
-     << std::endl;
-  printNodes(node) << std::endl;
-  printEdges(node) << std::endl;
-  os << "}" << std::endl << std::endl;
+  std::unordered_map<Node*, float> emptyStats;
+  return printSubgraph(node, os, namePrefix, emptyStats);
+}
+
+GraphvizPrinter& GraphvizPrinter::printSubgraph(
+    Node* node,
+    std::ostream& os,
+    const std::string& namePrefix,
+    const std::unordered_map<Node*, float>& nodeToTotTimeMs) {
+  // oh boy
+  this->os_ = &os;
+  this->nodeToTotTimeMs_ = &nodeToTotTimeMs;
+  if (!nodeToTotTimeMs.empty()) {
+    std::vector<float> vals;
+    for (const auto& [_, val] : nodeToTotTimeMs) {
+      vals.push_back(val);
+    }
+    std::sort(vals.begin(), vals.end());
+    medianTotTime_ = vals[vals.size() / 2];
+    maxTotTime_ = vals.back();
+  }
+  printSubgraph(node, namePrefix);
   return *this;
 }
 

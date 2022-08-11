@@ -28,9 +28,13 @@ class Evaluator {
   TensorBackend& backend_;
   // track (conservatively) how many more times the a node's result will be used
   std::unordered_map<Node*, unsigned> nodeToResultUseCount_{};
+  // track time spent on executing a node alone (not its inputs)
+  std::unordered_map<Node*, float> nodeToTotTimeMs_{};
 
   void evalNode(Node* node);
   void evalNodeDispatch(Node* node);
+  // profile execution time of `func` and associate it with `nodePtr`
+  void profile(std::function<void()> func, Node* nodePtr);
 
   // evaluate and set result without checking for existing result
   void evalBinaryNode(BinaryNode& node);
