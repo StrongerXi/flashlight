@@ -44,9 +44,15 @@ std::shared_ptr<Node> IndexedMergeNode::mergeSourceNode() const {
 
 std::shared_ptr<Node> IndexedMergeNode::mapInputs(
     std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)>&& func) {
+  const auto newIndexedNode = func(indexedNode());
+  const auto newMergeSourceNode = func(mergeSourceNode());
+  if (newIndexedNode == indexedNode() &&
+      newMergeSourceNode == mergeSourceNode()) {
+    return shared_from_this();
+  }
   // TODO map tensor in indices as well
   return std::make_shared<IndexedMergeNode>(
-      PrivateHelper{}, func(indexedNode()), indices_, func(mergeSourceNode()));
+      PrivateHelper{}, newIndexedNode, indices_, newMergeSourceNode);
 }
 
 } // namespace fl

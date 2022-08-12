@@ -44,8 +44,16 @@ const CustomNode::EvalFunc& CustomNode::evalFunc() const {
 std::shared_ptr<Node> CustomNode::mapInputs(
     std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)>&& func) {
   std::vector<std::shared_ptr<Node>> newInputs;
+  bool sameInputs = true;
   for (const auto& oldInput : inputs()) {
-      newInputs.emplace_back(func(oldInput));
+    const auto newInput = func(oldInput);
+    if (newInput != oldInput) {
+      sameInputs = false;
+    }
+    newInputs.emplace_back(newInput);
+  }
+  if (sameInputs) {
+    return shared_from_this();
   }
   return create(
       std::string(debugName_),

@@ -30,7 +30,9 @@ enum class BinaryOp {
 /**
  * A node that represents binary operations.
  */
-class BinaryNode : public NodeTrait<BinaryNode> {
+class BinaryNode :
+  public NodeTrait<BinaryNode>,
+  public std::enable_shared_from_this<BinaryNode> {
   const BinaryOp op_;
 
   // a trick to enable `std::make_shared` with effecitvely private constructor

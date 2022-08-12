@@ -91,9 +91,12 @@ const std::vector<Index>& IndexNode::indices() const {
 
 std::shared_ptr<Node> IndexNode::mapInputs(
     std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)>&& func) {
+  const auto newIndexedNode = func(indexedNode());
+  if (newIndexedNode == indexedNode()) {
+    return shared_from_this();
+  }
   // TODO map tensor in indices as well
-  return std::make_shared<IndexNode>(
-      PrivateHelper{}, func(indexedNode()), indices_);
+  return std::make_shared<IndexNode>(PrivateHelper{}, newIndexedNode, indices_);
 }
 
 } // namespace fl

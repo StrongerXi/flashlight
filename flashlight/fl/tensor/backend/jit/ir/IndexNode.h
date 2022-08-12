@@ -15,7 +15,9 @@ namespace fl {
 /**
  * A node that represents indexing operation.
  */
-class IndexNode : public NodeTrait<IndexNode> {
+class IndexNode :
+    public NodeTrait<IndexNode>,
+    public std::enable_shared_from_this<IndexNode> {
   const std::shared_ptr<const std::vector<Index>> indices_;
 
   // a trick to enable `std::make_shared` with effecitvely private constructor

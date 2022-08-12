@@ -19,7 +19,9 @@ namespace fl {
  *   2. values of output at indices = mergeSourceNode
  *   3. values of output outside indices = indexedNode
  */
-class IndexedMergeNode : public NodeTrait<IndexedMergeNode> {
+class IndexedMergeNode :
+  public NodeTrait<IndexedMergeNode>,
+  public std::enable_shared_from_this<IndexedMergeNode> {
   const std::shared_ptr<const std::vector<Index>> indices_;
 
   // a trick to enable `std::make_shared` with effecitvely private constructor

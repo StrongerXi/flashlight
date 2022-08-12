@@ -44,7 +44,12 @@ std::shared_ptr<Node> BinaryNode::rhs() const {
 
 std::shared_ptr<Node> BinaryNode::mapInputs(
     std::function<std::shared_ptr<Node>(std::shared_ptr<Node>)>&& func) {
-  return create(func(lhs()), func(rhs()), op_);
+  const auto newLhs = func(lhs());
+  const auto newRhs = func(rhs());
+  if (newLhs == lhs() && newRhs == rhs()) {
+    return shared_from_this();
+  }
+  return create(newLhs, newRhs, op_);
 }
 
 } // namespace fl

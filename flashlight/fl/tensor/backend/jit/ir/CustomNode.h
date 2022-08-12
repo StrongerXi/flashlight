@@ -18,7 +18,9 @@ namespace fl {
 /**
  * A node that represents customized op (e.g., fused tensor operation)
  */
-class CustomNode : public NodeTrait<CustomNode> {
+class CustomNode :
+  public NodeTrait<CustomNode>,
+  public std::enable_shared_from_this<CustomNode> {
  public:
   using EvalFunc = std::function<Tensor(const std::vector<Tensor>&)>;
 

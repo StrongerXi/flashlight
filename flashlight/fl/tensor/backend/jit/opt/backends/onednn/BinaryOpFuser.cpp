@@ -189,6 +189,11 @@ BinaryOpFuser::BinaryOpFuser(std::shared_ptr<Node> root)
 
 std::shared_ptr<Node> BinaryOpFuser::rewriteFrom(
     std::shared_ptr<Node> node) {
+  // Don't even try to accumulate if there isn't at least 2 binops to fuse
+  // This ensure we don't end up just creating a new binary node
+  if (profitableFuseChainLengths_.at(node.get()) <= 1) {
+    return node->mapInputs([this](auto input) { return rewriteFrom(input); });
+  }
   std::vector<BinopInfo> accumualtedBinops;
   return rewriteFrom(node, accumualtedBinops);
 }
