@@ -51,3 +51,5 @@ if (FL_USE_ONEDNN)
   build_test(SRC ${DIR}/tensor/onednn/OneDnnCPUStreamTest.cpp LIBS ${LIBS})
   build_test(SRC ${DIR}/tensor/onednn/OneDnnTensorTest.cpp LIBS ${LIBS})
 endif ()
+
+build_test(SRC ${DIR}/tensor/jit/FooTest.cpp LIBS ${LIBS})
