@@ -13,6 +13,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <sstream>
+#include <iostream>
 
 #include "flashlight/fl/tensor/Shape.h"
 #include "flashlight/fl/tensor/backend/onednn/OneDnnBackend.h"
@@ -125,6 +126,7 @@ OneDnnTensor::OneDnnTensor(
 }
 
 std::unique_ptr<TensorAdapterBase> OneDnnTensor::clone() const {
+  std::cout << "clone" << std::endl;
   // TODO copy on write
   auto& srcMem = sharedData_->memory;
   const auto type = srcMem.get_desc().data_type();

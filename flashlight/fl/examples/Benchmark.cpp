@@ -11,7 +11,13 @@
 #include "flashlight/fl/common/Timer.h"
 #include "flashlight/fl/nn/nn.h"
 #include "flashlight/fl/tensor/Init.h"
+#include "flashlight/fl/tensor/TensorAdapter.h"
 #include "flashlight/fl/tensor/tensor.h"
+
+#include "flashlight/fl/tensor/backend/af/ArrayFireTensor.h"
+#include "flashlight/fl/tensor/backend/onednn/OneDnnTensor.h"
+#include "flashlight/fl/tensor/backend/jit/JitTensor.h"
+#include "flashlight/fl/autograd/tensor/backend/onednn/OneDnnAutogradExtension.h"
 
 using namespace fl;
 
@@ -21,12 +27,12 @@ using namespace fl;
 
 double timeit(std::function<void()> fn) {
   // warmup
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 0; ++i) {
     fn();
   }
   fl::sync();
 
-  int num_iters = 100;
+  int num_iters = 1;
   fl::sync();
   auto start = fl::Timer::start();
   for (int i = 0; i < num_iters; i++) {
@@ -38,28 +44,30 @@ double timeit(std::function<void()> fn) {
 
 double alexnet() {
   Sequential model;
-  model.add(Conv2D(3, 64, 11, 11, 4, 4, 2, 2)); // 224 -> 55
+  //model.add(Conv2D(3, 64, 11, 11, 4, 4, 2, 2)); // 224 -> 55
   model.add(ReLU());
-  model.add(Pool2D(3, 3, 2, 2)); // 55 ->  27
-  model.add(Conv2D(64, 192, 5, 5, 1, 1, 2, 2)); //  27 -> 27
-  model.add(ReLU());
-  model.add(Pool2D(3, 3, 2, 2)); //  27 ->  13
-  model.add(Conv2D(192, 384, 3, 3, 1, 1, 1, 1)); //  13 ->  13
-  model.add(ReLU());
-  model.add(Conv2D(384, 256, 3, 3, 1, 1, 1, 1)); //  13 ->  13
-  model.add(ReLU());
-  model.add(Conv2D(256, 256, 3, 3, 1, 1, 1, 1)); //  13 ->  13
-  model.add(ReLU());
-  model.add(Pool2D(3, 3, 2, 2)); // 13 -> 6
+  //model.add(Pool2D(3, 3, 2, 2)); // 55 ->  27
+  //model.add(Conv2D(64, 192, 5, 5, 1, 1, 2, 2)); //  27 -> 27
+  //model.add(ReLU());
+  //model.add(Pool2D(3, 3, 2, 2)); //  27 ->  13
+  //model.add(Conv2D(192, 384, 3, 3, 1, 1, 1, 1)); //  13 ->  13
+  //model.add(ReLU());
+  //model.add(Conv2D(384, 256, 3, 3, 1, 1, 1, 1)); //  13 ->  13
+  //model.add(ReLU());
+  //model.add(Conv2D(256, 256, 3, 3, 1, 1, 1, 1)); //  13 ->  13
+  //model.add(ReLU());
+  //model.add(Pool2D(3, 3, 2, 2)); // 13 -> 6
 
-  auto input = Variable(fl::rand({224, 224, 3, 128}) * 2 - 2, false);
+  auto input = Variable(fl::rand({224, 224, 3, 128}) * 2.0f - 2.0f, true);
 
   auto b = model.forward(input);
-  auto gradoutput = Variable(fl::rand(b.shape()) * 2 - 2, false);
+  auto gradoutput = Variable(fl::rand(b.shape()) * 2.0f - 2.0f, false);
 
   auto alexnet_fn = [&]() {
     auto output = model.forward(input);
     output.backward(gradoutput);
+    //fl::eval(output.tensor());
+    fl::eval(input.grad().tensor());
   };
   return timeit(alexnet_fn);
 }
@@ -145,10 +153,14 @@ double layerNorm() {
 
 int main() {
   fl::init();
+
+  fl::setDefaultTensorType<JitTensor<OneDnnTensor>>();
+  fl::registerTensorExtension<OneDnnAutogradExtension>(TensorBackendType::Jit);
   TIME(alexnet);
-  TIME(embedding);
-  TIME(linear);
-  TIME(batchNorm);
-  TIME(layerNorm);
+
+  //TIME(embedding);
+  //TIME(linear);
+  //TIME(batchNorm);
+  //TIME(layerNorm);
   return 0;
 }

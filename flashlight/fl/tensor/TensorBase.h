@@ -87,7 +87,7 @@ class Tensor {
    * For internal use only. Tensor implementations should define when and where
    * deep copies happen based on their dataflow graph abstractions.
    */
-  Tensor shallowCopy() const;
+  //Tensor shallowCopy() const;
   // shallowCopy() above is used in DevicePtr given that it doesn't mutate
   // tensors in place with tensor operations, and only pulls out memory.
   friend class DevicePtr;
@@ -97,6 +97,9 @@ class Tensor {
   friend class Evaluator;
 
  public:
+  // TODO for testing
+  Tensor shallowCopy() const;
+
   explicit Tensor(std::unique_ptr<TensorAdapterBase> adapter);
   virtual ~Tensor();
 

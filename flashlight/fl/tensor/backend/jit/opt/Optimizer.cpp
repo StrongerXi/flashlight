@@ -7,6 +7,8 @@
 
 #include "flashlight/fl/tensor/backend/jit/opt/Optimizer.h"
 
+#include <iostream>
+
 #include "flashlight/fl/tensor/TensorBackend.h"
 #include "flashlight/fl/tensor/TensorExtension.h"
 #include "flashlight/fl/tensor/backend/jit/ir/BinaryNode.h"
@@ -16,6 +18,7 @@
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
 #include "flashlight/fl/tensor/backend/jit/opt/JitOptimizerExtension.h"
 #include "flashlight/fl/tensor/backend/jit/opt/JitOptimizerExtensionBackends.h"
+#include "flashlight/fl/tensor/backend/jit/printer/GraphvizPrinter.h"
 
 namespace fl {
 
@@ -124,12 +127,26 @@ std::shared_ptr<Node> foldScalars(std::shared_ptr<Node> node) {
 Optimizer::Optimizer(TensorBackend& backend) : backend_(backend) {}
 
 std::shared_ptr<Node> Optimizer::optimize(std::shared_ptr<Node> node) {
-  node = foldScalars(node);
+  static unsigned numTreeOptimized = 0;
+  static GraphvizPrinter printer;
+  //printer
+  //  .setEdgeColor(GraphvizPrinter::Color::Black)
+  //  .printSubgraph(node, std::cout, "opt_pre");
+
+  //node = foldScalars(node);
+  //printer
+  //  .setEdgeColor(GraphvizPrinter::Color::Green)
+  //  .printSubgraph(node, std::cout, "opt_post_scalar_fold");
+
   auto& registrar = detail::TensorExtensionRegistrar::getInstance();
   if (registrar.isTensorExtensionRegistered(
         backend_.backendType(), TensorExtensionType::JitOptimizer)) {
     node = backend_.getExtension<JitOptimizerExtension>().optimize(node);
+    //printer
+    //  .setEdgeColor(GraphvizPrinter::Color::Green)
+    //  .printSubgraph(node, std::cout, "opt_post_extension");
   }
+  numTreeOptimized++;
   return node;
 }
 

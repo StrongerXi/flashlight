@@ -9,9 +9,11 @@
 
 #include <chrono>
 #include <functional>
+#include <iostream>
 
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
+#include "flashlight/fl/tensor/backend/jit/printer/GraphvizPrinter.h"
 
 namespace fl {
 
@@ -162,7 +164,12 @@ const Tensor Evaluator::getTensorOrEvalNode(std::shared_ptr<Node> node) {
 }
 
 void Evaluator::execute(std::shared_ptr<Node> node) {
-  getTensorOrEvalNode(node);
+  static GraphvizPrinter printer;
+  if (!node->getResult().has_value()) {
+    getTensorOrEvalNode(node);
+    printer.printSubgraph(node, std::cout, "eval", nodeToTotTimeMs_);
+    nodeToTotTimeMs_.clear();
+  }
 }
 
 } // namespace fl
