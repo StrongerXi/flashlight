@@ -58,7 +58,7 @@ const Tensor Evaluator::evalBinaryNode(BinaryNode& node) {
 const Tensor Evaluator::evalCustomNode(CustomNode& node) {
   std::vector<Tensor> inputTensors;
   for (auto& inputNode : node.inputs()) {
-    inputTensors.emplace_back(getTensorOrEvalNode(inputNode));
+    inputTensors.emplace_back(getTensorOrEvalNode(inputNode).shallowCopy());
   }
   std::function<const Tensor()> func = [&]() {
     return node.evalFunc()(inputTensors);

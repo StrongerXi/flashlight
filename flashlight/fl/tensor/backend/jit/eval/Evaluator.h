@@ -32,6 +32,7 @@ class Evaluator {
   template <typename T>
   T profile(std::function<T()> func, const Node* nodePtr);
 
+  // TODO const here seem to prevent move constructor
   const Tensor evalBinaryOp(const Tensor& lhs, const Tensor& rhs, BinaryOp op);
   const Tensor evalBinaryNode(BinaryNode& node);
   const Tensor evalCustomNode(CustomNode& node);
