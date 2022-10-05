@@ -11,7 +11,10 @@
 #include "flashlight/fl/common/Timer.h"
 #include "flashlight/fl/nn/nn.h"
 #include "flashlight/fl/tensor/Init.h"
+#include "flashlight/fl/tensor/TensorAdapter.h"
 #include "flashlight/fl/tensor/tensor.h"
+#include "flashlight/fl/tensor/backend/jit/JitTensor.h"
+#include "flashlight/fl/tensor/backend/onednn/OneDnnTensor.h"
 
 using namespace fl;
 
@@ -26,7 +29,7 @@ double timeit(std::function<void()> fn) {
   }
   fl::sync();
 
-  int num_iters = 100;
+  int num_iters = 20;
   fl::sync();
   auto start = fl::Timer::start();
   for (int i = 0; i < num_iters; i++) {
@@ -52,14 +55,18 @@ double alexnet() {
   model.add(ReLU());
   model.add(Pool2D(3, 3, 2, 2)); // 13 -> 6
 
-  auto input = Variable(fl::rand({224, 224, 3, 128}) * 2 - 2, false);
+  auto input = Variable(fl::rand({224, 224, 3, 128}) * 2.0 - 2.0, true);
 
-  auto b = model.forward(input);
-  auto gradoutput = Variable(fl::rand(b.shape()) * 2 - 2, false);
+  auto outputShape = model.forward(input).shape();
+  auto gradoutput = Variable(fl::rand(outputShape) * 2.0 - 2.0, false);
+  fl::eval(input.tensor());
+  fl::eval(gradoutput.tensor());
 
   auto alexnet_fn = [&]() {
     auto output = model.forward(input);
     output.backward(gradoutput);
+    fl::eval(output.tensor());
+    fl::eval(input.grad().tensor());
   };
   return timeit(alexnet_fn);
 }
@@ -146,9 +153,11 @@ double layerNorm() {
 int main() {
   fl::init();
   TIME(alexnet);
-  TIME(embedding);
-  TIME(linear);
-  TIME(batchNorm);
-  TIME(layerNorm);
+  fl::setDefaultTensorType<JitTensor<OneDnnTensor>>();
+  TIME(alexnet);
+  //TIME(embedding);
+  //TIME(linear);
+  //TIME(batchNorm);
+  //TIME(layerNorm);
   return 0;
 }

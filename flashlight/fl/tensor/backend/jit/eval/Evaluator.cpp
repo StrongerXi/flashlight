@@ -10,9 +10,11 @@
 #include <chrono>
 #include <functional>
 #include <queue>
+#include <iostream>
 
 #include "flashlight/fl/tensor/backend/jit/JitTensorBase.h"
 #include "flashlight/fl/tensor/backend/jit/ir/ValueNode.h"
+#include "flashlight/fl/tensor/backend/jit/printer/GraphvizPrinter.h"
 
 namespace fl {
 
@@ -149,7 +151,8 @@ Evaluator::evalBinaryOp(BinaryOp op, const Tensor& lhs, const Tensor& rhs) {
 }
 
 Tensor Evaluator::evalScalar(ScalarNode& node) {
-  const Shape& shape = node.shape();
+  //const Shape& shape = node.shape();
+  Shape shape(std::vector<Dim>(node.shape().ndim(), 1));
   const auto dtype = node.dataType();
   switch (dtype) {
     case dtype::f16:
@@ -205,8 +208,10 @@ void Evaluator::evalNode(Node* node) {
 }
 
 void Evaluator::eval(Node* node) {
+  static GraphvizPrinter printer;
   nodeToResultUseCount_ = getNodeToRefCountInTree(node);
   evalNode(node);
+  //printer.printSubgraph(node, std::cout, "eval", nodeToTotTimeMs_);
   nodeToTotTimeMs_.clear();
   nodeToResultUseCount_.clear();
 }

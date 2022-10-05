@@ -28,6 +28,7 @@ build_example(Perceptron.cpp)
 build_example(Classification.cpp)
 build_example(Xor.cpp)
 build_example(AdaptiveClassification.cpp)
+build_example(MicroBenchmark.cpp)
 
 if (FL_BUILD_DISTRIBUTED OR TARGET flashlight::Distributed)
   build_example(DistributedTraining.cpp)

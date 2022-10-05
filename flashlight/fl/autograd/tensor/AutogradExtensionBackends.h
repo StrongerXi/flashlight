@@ -34,6 +34,7 @@ FL_REGISTER_TENSOR_EXTENSION(CudnnAutogradExtension, ArrayFire);
 #if FL_USE_ONEDNN
 // OneDNN backend can transparently use its autograd extension
 FL_REGISTER_TENSOR_EXTENSION(OneDnnAutogradExtension, OneDnn);
+FL_REGISTER_TENSOR_EXTENSION(OneDnnAutogradExtension, Jit);
 
   #if FL_USE_ARRAYFIRE && (FL_ARRAYFIRE_USE_CPU || FL_ARRAYFIRE_USE_OPENCL)
 FL_REGISTER_TENSOR_EXTENSION(OneDnnAutogradExtension, ArrayFire);
